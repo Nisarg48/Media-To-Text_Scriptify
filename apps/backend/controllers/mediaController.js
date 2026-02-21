@@ -3,6 +3,7 @@ const { PutObjectCommand } = require('@aws-sdk/client-s3');
 const { s3Client } = require('../config/storage');
 const { v4: uuidv4 } = require('uuid');
 const Media = require('../models/Media');
+const { sendToQueue } = require('../config/rabbitmq');
 
 // @route  POST /api/media/presigned-url
 // @desc   Get a presigned URL for uploading media
@@ -58,6 +59,15 @@ const finalizeUpload = async (req, res) => {
 
         await newMedia.save();
 
+        // Send the media record to the RabbitMQ queue
+        const taskPayload = {
+            mediaId: newMedia._id,
+            userId: req.user.id,
+            fileKey: fileKey,
+        };
+
+        await sendToQueue(taskPayload);
+        
         res.status(201).json({
             msg: "Media record created successfully",
             media: newMedia
