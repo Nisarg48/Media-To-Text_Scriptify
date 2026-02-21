@@ -1,19 +1,24 @@
 require('dotenv').config();
 
 const express = require('express');
+const { json } = require('body-parser');
 const app = express();
 
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
+const mediaRoutes = require('./routes/mediaRoutes');
 
 // 1. Connect to database
 connectDB();
 
 // 2. Middleware
-app.use(express.json());
+app.use(json());
 
 // 3. Authentication Routes
 app.use('/api/auth', authRoutes);
+
+// 4. Media Routes
+app.use('/api/media', mediaRoutes);
 
 app.listen(process.env.PORT, () => {
     console.log(`Server is running on port ${process.env.PORT}`);

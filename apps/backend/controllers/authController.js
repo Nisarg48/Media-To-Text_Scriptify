@@ -75,17 +75,17 @@ const login = async (req, res) => {
 
         const payload = { user: { id: user.id } };
 
-        jwt.sign(
+        let token = jwt.sign(
             payload, 
             process.env.JWT_SECRET,
             { expiresIn: '7d' },
-            (err, token) => {
-                if (err) throw err;
-                res.json({ token });
-            }
+            // (err, token) => {
+            //     if (err) throw err;
+            //     res.json({ token });
+            // }
         );
 
-        res.status(200).json({ msg: 'Login successful'});
+        res.status(200).json({ msg: 'Login successful', token });
 
     } catch (err) {
         console.error(err.message);
