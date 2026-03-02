@@ -1,0 +1,31 @@
+[
+  { "code": "en", "name": "English" },
+  { "code": "es", "name": "Spanish" },
+  { "code": "fr", "name": "French" },
+  
+  { "code": "de", "name": "German" },
+  { "code": "it", "name": "Italian" },
+  { "code": "pt", "name": "Portuguese" },
+  { "code": "nl", "name": "Dutch" },
+  { "code": "pl", "name": "Polish" },
+  { "code": "tr", "name": "Turkish" },
+
+  { "code": "zh", "name": "Chinese (Mandarin)" },
+  { "code": "ja", "name": "Japanese" },
+  { "code": "ko", "name": "Korean" },
+  { "code": "id", "name": "Indonesian" },
+  { "code": "vi", "name": "Vietnamese" },
+  { "code": "th", "name": "Thai" },
+
+  { "code": "hi", "name": "Hindi" },
+  { "code": "bn", "name": "Bengali" },
+  { "code": "ta", "name": "Tamil" },
+  { "code": "te", "name": "Telugu" },
+  { "code": "mr", "name": "Marathi" },
+
+  { "code": "ar", "name": "Arabic" },
+  { "code": "ru", "name": "Russian" },
+  { "code": "uk", "name": "Ukrainian" },
+  { "code": "fa", "name": "Persian" },
+  { "code": "ur", "name": "Urdu" }
+]
