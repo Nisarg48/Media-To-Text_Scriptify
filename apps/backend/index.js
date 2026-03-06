@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const express = require('express');
 const { json } = require('body-parser');
+const cors = require('cors');
 const app = express();
 
 const connectDB = require('./config/db');
@@ -13,6 +14,7 @@ const transcriptRoutes = require('./routes/transcriptRoutes');
 connectDB();
 
 // 2. Middleware
+app.use(cors());
 app.use(json());
 
 // 3. Authentication Routes
