@@ -5,7 +5,8 @@ const { getUploadUrl,
         finalizeUpload,
         getUserMedia,
         getMediaById,
-        deleteMediaById } = require('../controllers/mediaController');
+        deleteMediaById,
+        getPlaybackUrl } = require('../controllers/mediaController');
 
 // @route POST /api/media/presigned-url
 // @desc Get a presigned URL for uploading media
@@ -31,5 +32,10 @@ routes.get('/:id', auth, getMediaById);
 // @desc Delete a media record, its transcript, and files from MinIO
 // @access Private
 routes.delete('/:id', auth, deleteMediaById);
+
+// @route GET /api/media/:id/play
+// @desc Get a temporary presigned URL to stream the video in the React player
+// @access Private
+routes.get('/:id/play', auth, getPlaybackUrl);
 
 module.exports = routes;

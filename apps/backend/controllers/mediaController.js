@@ -1,5 +1,5 @@
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
-const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { GetObjectCommand, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const { s3Client } = require('../config/storage');
 const { v4: uuidv4 } = require('uuid');
 const Media = require('../models/Media');
@@ -211,10 +211,45 @@ const deleteMediaById = async (req, res) => {
     }
 };
 
+// @route  GET /api/media/:id/play
+// @desc   Get a temporary presigned URL to stream the video in the React player
+// @access Private
+const getPlaybackUrl = async (req, res) => {
+    try {
+        const media = await Media.findOne({ 
+            _id: new mongoose.Types.ObjectId(req.params.id), 
+            mediaUploadedBy: req.user.id 
+        });
+
+        if (!media || !media.storage.key) {
+            return res.status(404).json({ msg: 'Media file not found' });
+        }
+
+        // Generate a GET URL valid for 2 hours (7200 seconds)
+        const command = new GetObjectCommand({
+            Bucket: process.env.STORAGE_BUCKET_NAME,
+            Key: media.storage.key,
+            ResponseContentDisposition: `inline; filename="${media.filename}"`,
+        });
+
+        const playbackUrl = await getSignedUrl(s3Client, command, { expiresIn: 7200 });
+
+        res.status(200).json({ 
+            msg: "Playback URL generated successfully",
+            playbackUrl, 
+            filename: media.filename 
+        });
+    } catch (error) {
+        console.error("Error generating playback URL:", error.message);
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getUploadUrl,
     finalizeUpload,
     getUserMedia,
     getMediaById,
-    deleteMediaById
+    deleteMediaById,
+    getPlaybackUrl
 };
