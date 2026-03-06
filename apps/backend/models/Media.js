@@ -5,11 +5,15 @@ const mediaSchema = new mongoose.Schema(
   {
     mediaUploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     filename: { type: String, required: true },
-    sizeBytes: { type: Number, min: 0, required: true },
+    sizeBytes: { type: Number, min: 0 },
     lengthMs: { type: Number, min: 0 },
     mediaType: { type: String, enum: ['AUDIO', 'VIDEO'], required: true, index: true },
     format: { type: String, required: true },
-    actualLanguage: { type: String },
+    
+    detectedLanguage: { type: String },
+    sourceLanguageMode: { type: String, enum: ['AUTO', 'FORCED'], default: 'AUTO' },
+    sourceLanguageCode: { type: String },
+
     status: { type: String, enum: ['UPLOADING', 'UPLOADED', 'PROCESSING', 'COMPLETED', 'FAILED'], default: 'UPLOADING', index: true },
     
     storage: { type: StorageSchema, required: true },

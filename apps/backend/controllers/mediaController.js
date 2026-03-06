@@ -4,6 +4,7 @@ const { s3Client } = require('../config/storage');
 const { v4: uuidv4 } = require('uuid');
 const Media = require('../models/Media');
 const { sendToQueue } = require('../config/rabbitmq');
+const languages = require('../../shared/languages.json');
 
 // @route  POST /api/media/presigned-url
 // @desc   Get a presigned URL for uploading media
@@ -40,20 +41,40 @@ const getUploadUrl = async (req, res) => {
 // @access Private
 const finalizeUpload = async (req, res) => {
     try {
-        const {fileName, fileKey, sizeBytes, mediaType, format} = req.body;
+        const {
+            fileName, fileKey, 
+            mediaType, format, 
+            targetLanguageCode,
+            sourceLanguageCode
+        } = req.body;
+
+        if(!fileName || !fileKey || !mediaType || !format) {
+            return res.status(400).json({ message: 'File name, file key, media type and format are required' });
+        }
+        
+        if(!targetLanguageCode) {
+            return res.status(400).json({ message: 'Target language code is required' });
+        }
+
+        const isSupported = languages.some(language => language.code === targetLanguageCode);
+        if(!isSupported) {
+            return res.status(400).json({ message: `Target language code '${targetLanguageCode}' is not supported` });
+        }
+
+        const mode = sourceLanguageCode ? 'FORCED' : 'AUTO';
 
         const newMedia = new Media({
             mediaUploadedBy: req.user.id,
             filename: fileName,
-            sizeBytes,
             mediaType,
             format,
             status: 'UPLOADED',
+            sourceLanguageMode: mode,
+            sourceLanguageCode: sourceLanguageCode || null,
             storage: {
                 bucket: process.env.STORAGE_BUCKET_NAME,
                 key: fileKey,
                 format,
-                sizeBytes
             }
         });
 
@@ -64,6 +85,8 @@ const finalizeUpload = async (req, res) => {
             mediaId: newMedia._id,
             userId: req.user.id,
             fileKey: fileKey,
+            targetLanguageCode,
+            sourceLanguageCode,
         };
 
         await sendToQueue(taskPayload);
