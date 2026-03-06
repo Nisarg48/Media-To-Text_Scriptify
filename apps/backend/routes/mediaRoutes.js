@@ -1,7 +1,11 @@
 const express = require('express');
 const routes = express.Router();
 const { auth } = require('../middleware/auth');
-const { getUploadUrl, finalizeUpload } = require('../controllers/mediaController');
+const { getUploadUrl, 
+        finalizeUpload,
+        getUserMedia,
+        getMediaById,
+        deleteMediaById } = require('../controllers/mediaController');
 
 // @route POST /api/media/presigned-url
 // @desc Get a presigned URL for uploading media
@@ -12,5 +16,20 @@ routes.post('/presigned-url', auth, getUploadUrl);
 // @desc Save media record to DB after successful S3 upload
 // @access Private
 routes.post('/finalize', auth, finalizeUpload);
+
+// @route GET /api/media
+// @desc Get all media uploads for the logged-in user
+// @access Private
+routes.get('/', auth, getUserMedia);
+
+// @route GET /api/media/:id
+// @desc Get single media details AND its associated transcript
+// @access Private
+routes.get('/:id', auth, getMediaById);
+
+// @route DELETE /api/media/:id
+// @desc Delete a media record, its transcript, and files from MinIO
+// @access Private
+routes.delete('/:id', auth, deleteMediaById);
 
 module.exports = routes;

@@ -18,8 +18,6 @@ const transcriptSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-transcriptSchema.index({ mediaId: 1 });
-transcriptSchema.index({ mediaId: 1 });
 
 const Transcript = mongoose.model('Transcript', transcriptSchema);
 module.exports = Transcript;

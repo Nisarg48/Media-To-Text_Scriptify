@@ -1,10 +1,12 @@
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
-const { PutObjectCommand } = require('@aws-sdk/client-s3');
+const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const { s3Client } = require('../config/storage');
 const { v4: uuidv4 } = require('uuid');
 const Media = require('../models/Media');
 const { sendToQueue } = require('../config/rabbitmq');
 const languages = require('../../shared/languages.json');
+const Transcript = require('../models/Transcript');
+const mongoose = require('mongoose');
 
 // @route  POST /api/media/presigned-url
 // @desc   Get a presigned URL for uploading media
@@ -101,7 +103,118 @@ const finalizeUpload = async (req, res) => {
     }
 };
 
+// @route  GET /api/media
+// @desc   Get all media uploads for the logged-in user
+// @access Private
+const getUserMedia = async (req, res) => {
+    try {
+        // Find all media uploaded by this user, sorted by newest first
+        const mediaList = await Media.find({ mediaUploadedBy: req.user.id })
+            .sort({ createdAt: -1 })
+            .select('-storage');
+        
+        res.status(200).json({
+            msg: "Media list fetched successfully",
+            media: mediaList
+        });
+    } catch (error) {
+        console.error("Error fetching user media:", error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// @route  GET /api/media/:id
+// @desc   Get single media details AND its associated transcript
+// @access Private
+const getMediaById = async (req, res) => {
+    try {
+        const media = await Media.findOne({ 
+            _id: new mongoose.Types.ObjectId(req.params.id), 
+            mediaUploadedBy: req.user.id 
+        });
+
+        if (!media) {
+            return res.status(404).json({ msg: 'Media not found' });
+        }
+
+        const transcript = await Transcript.findOne({ mediaId: media._id });
+
+        res.status(200).json({
+            msg: "Media details fetched successfully",
+            media,
+            transcript
+        });
+
+    } catch (error) {
+        console.error("Error fetching media details:", error);
+        if (error.kind === 'ObjectId') {
+            return res.status(404).json({ msg: 'Media not found' });
+        }
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// @route  DELETE /api/media/:id
+// @desc   Delete a media record, its transcript, and files from MinIO
+// @access Private
+const deleteMediaById = async (req, res) => {
+    try {
+        const media = await Media.findOne({ 
+            _id: new mongoose.Types.ObjectId(req.params.id), 
+            mediaUploadedBy: req.user.id 
+        });
+
+        if (!media) {
+            return res.status(404).json({ msg: 'Media not found' });
+        }
+
+        // Delete the raw video file from MinIO (Soft Fail)
+        if (media.storage && media.storage.key) {
+            const deleteVideoCommand = new DeleteObjectCommand({
+                Bucket: process.env.STORAGE_BUCKET_NAME,
+                Key: media.storage.key,
+            });
+            try { 
+                await s3Client.send(deleteVideoCommand); 
+            } catch (error) {
+                // Log the error but DO NOT stop the function
+                console.warn(`MinIO Video Delete Warning: Could not delete ${media.storage.key}`, error.message); 
+            }
+        }
+
+        // Find and delete the Transcript from DB and MinIO
+        const transcript = await Transcript.findOne({ mediaId: media._id });
+        if (transcript) {
+            if (transcript.jsonFile && transcript.jsonFile.key) {
+                const deleteJsonCommand = new DeleteObjectCommand({
+                    Bucket: process.env.STORAGE_BUCKET_NAME,
+                    Key: transcript.jsonFile.key,
+                });
+                try { 
+                    await s3Client.send(deleteJsonCommand); 
+                } catch (error) { 
+                    console.warn(`MinIO JSON Delete Warning: Could not delete ${transcript.jsonFile.key}`, error.message); 
+                } 
+            }
+            // NEW: Actually delete the transcript from MongoDB!
+            await Transcript.deleteOne({ _id: transcript._id });
+        }
+
+        // Finally, delete the Media record from MongoDB
+        await Media.deleteOne({ _id: media._id });
+
+        res.status(200).json({ msg: 'Media and associated files completely deleted' });
+
+    } catch (error) {
+        console.error("Error deleting media:", error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
 module.exports = {
     getUploadUrl,
-    finalizeUpload
+    finalizeUpload,
+    getUserMedia,
+    getMediaById,
+    deleteMediaById
 };
