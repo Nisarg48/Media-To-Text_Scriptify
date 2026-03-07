@@ -55,25 +55,30 @@ export default function LanguageSelect({
 
       {open && (
         <ul
-          className="absolute left-0 right-0 z-50 mt-1 max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
+          className="absolute left-0 right-0 z-50 mt-1 max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg animate-fade-in"
           role="listbox"
         >
-          {options.map((opt) => (
-            <li key={opt.value} role="option" aria-selected={opt.value === value}>
-              <button
-                type="button"
-                onClick={() => {
-                  onChange(opt.value);
-                  setOpen(false);
-                }}
-                className={`w-full px-4 py-2.5 text-left text-sm transition hover:bg-emerald-50 ${
-                  opt.value === value ? 'bg-emerald-50 font-medium text-emerald-800' : 'text-slate-800'
-                }`}
-              >
-                {opt.label}
-              </button>
-            </li>
-          ))}
+          {options.map((opt) => {
+            const isSelected = opt.value === value;
+            return (
+              <li key={opt.value} role="option" aria-selected={isSelected}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(opt.value);
+                    setOpen(false);
+                  }}
+                  className={`w-full px-4 py-2.5 text-left text-sm transition-all duration-200 ${
+                    isSelected
+                      ? 'bg-emerald-100 font-medium text-emerald-800'
+                      : 'bg-white text-slate-700 hover:bg-emerald-50 hover:text-emerald-800'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

@@ -20,7 +20,7 @@ export default function DashboardLayout() {
         <nav className="flex items-center gap-2 sm:gap-4">
           <Link
             to="/dashboard"
-            className="rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition-all duration-200 hover:bg-slate-100 hover:text-slate-900"
+            className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 transition-all duration-200 hover:bg-slate-200 hover:text-slate-900"
           >
             Dashboard
           </Link>
@@ -36,7 +36,7 @@ export default function DashboardLayout() {
               logout();
               navigate('/', { replace: true });
             }}
-            className="rounded-xl px-3 py-2 text-sm font-medium text-slate-500 transition-all duration-200 hover:bg-slate-100 hover:text-slate-700"
+            className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 transition-all duration-200 hover:bg-slate-200 hover:text-slate-900"
           >
             Log out
           </button>
