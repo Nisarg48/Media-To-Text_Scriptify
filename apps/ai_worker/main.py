@@ -150,6 +150,7 @@ def process_message(ch, method, properties, body):
     media_id = None
     model_name = 'small'
     current_stage = "INITIALIZING"
+    completed_successfully = False
 
     try:
         message = json.loads(body.decode('utf-8'))
@@ -317,11 +318,12 @@ def process_message(ch, method, properties, body):
         print(f"📝 DB Update Report -> Matched: {update_result.matched_count} | Modified: {update_result.modified_count}")
 
         print(f"✅ Transcript saved and media status updated for media ID: {media_id}")
+        completed_successfully = True
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     except Exception as e:
         print(f"❌ Error processing message: {e}")
-        if media_id:
+        if media_id and not completed_successfully:
             db.media.update_one(
                 {"_id": ObjectId(media_id)},
                 {"$set": {
@@ -332,10 +334,14 @@ def process_message(ch, method, properties, body):
                     }
                 }}
             )
-        ch.basic_nack(
-            delivery_tag=method.delivery_tag, 
-            requeue=False
-        )
+        if not completed_successfully:
+            ch.basic_nack(
+                delivery_tag=method.delivery_tag,
+                requeue=False
+            )
+        elif completed_successfully:
+            # Work was done but ack failed (e.g. connection reset). Do not nack so message is not requeued.
+            print("⚠️ Ack failed but transcript was saved; message will not be requeued.")
 
     finally:
         # Clean up temporary files
@@ -349,8 +355,11 @@ def start_worker():
     print(f"⏳ Connecting to RabbitMQ at {RABBITMQ_URL}...")
 
     try:
-        # Establish connection to RabbitMQ
-        connection = pika.BlockingConnection(pika.URLParameters(RABBITMQ_URL))
+        # Use heartbeat=0 so the connection is not closed during long operations (e.g. Gemini translation).
+        # Default heartbeat is 60s; translation can take several minutes.
+        url = RABBITMQ_URL
+        url = url + ("&" if "?" in url else "?") + "heartbeat=0"
+        connection = pika.BlockingConnection(pika.URLParameters(url))
         channel = connection.channel()
 
         # Ensure the queue exists

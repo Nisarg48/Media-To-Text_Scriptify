@@ -7,16 +7,16 @@ export const AuthProvider = ({ children }) => {
     const [token, setToken] = useState(localStorage.getItem('token') || null);
     const navigate = useNavigate();
 
-    const login = (newToken) => {
+    const login = (newToken, nextPath) => {
         localStorage.setItem('token', newToken);
         setToken(newToken);
-        navigate('/dashboard'); 
+        navigate(nextPath || '/dashboard', { replace: true });
     };
 
     const logout = () => {
         localStorage.removeItem('token');
         setToken(null);
-        navigate('/login');
+        navigate('/', { replace: true });
     };
 
     return (
