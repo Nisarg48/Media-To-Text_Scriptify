@@ -19,9 +19,11 @@ const mediaSchema = new mongoose.Schema(
     storage: { type: StorageSchema, required: true },
     derivedAudio: { type: StorageSchema },
 
-    errorDetails: { 
+    errorDetails: {
       stage: { type: String },
       message: { type: String },
+      userMessage: { type: String },
+      attempt: { type: Number },
     },
   },
   { timestamps: true }

@@ -101,44 +101,107 @@ def extract_audio(input_path, output_path):
 
     print("✅ FFmpeg extraction successful!")
 
-def translate_transcript_via_gemini(original_text, segments, target_language_code):
+def _validate_and_fix_segments(translated_segments, original_segments):
     """
-    Sends the English text and segments to Gemini for translation.
-    Returns a dictionary with translated 'text' and translated 'segments'.
+    Ensures translated segments have same count and same start/end as originals (sync).
+    If timing was changed by the model, restore from originals. Returns (fixed_segments, ok).
     """
-    print(f"🌐 Sending {len(segments)} segments to Gemini for translation to '{target_language_code}'...")
-    
-    # We package everything into one JSON object to send to Gemini
-    payload = {
-        "text": original_text,
-        "segments": segments
-    }
-    
+    if not original_segments or not translated_segments:
+        return (translated_segments, len(translated_segments) == len(original_segments))
+    if len(translated_segments) != len(original_segments):
+        print(f"⚠️ Segment count mismatch: got {len(translated_segments)}, expected {len(original_segments)}. Restoring timing from original.")
+    fixed = []
+    for i in range(len(translated_segments)):
+        t = dict(translated_segments[i]) if isinstance(translated_segments[i], dict) else translated_segments[i].copy()
+        if i < len(original_segments):
+            o = original_segments[i]
+            t["start"] = o.get("start", t.get("start"))
+            t["end"] = o.get("end", t.get("end"))
+        fixed.append(t)
+    return (fixed, len(fixed) == len(original_segments))
+
+
+def translate_transcript_via_gemini(original_text, segments, target_language_code, source_language_code=None, max_retries=2):
+    """
+    Sends the text and segments to Gemini for translation.
+    Returns (translated_text, translated_segments).
+    Enforces: strict timing (no change to start/end), no name translation, natural/idiomatic output.
+    Validates and fixes segment count and start/end after response.
+    """
+    from_desc = f" from {source_language_code}" if source_language_code else ""
+    print(f"🌐 Sending {len(segments)} segments to Gemini for translation{from_desc} to '{target_language_code}'...")
+    payload = {"text": original_text, "segments": segments}
+
+    rules = """
+    RULES (follow strictly):
+    1. TIMING: Do not change start, end, or the number of segments. Only translate the "text" field inside each segment. One segment = one subtitle; do not merge or split segments.
+    2. NAMES: Keep all names (people, places, brands, titles) in original language or standard romanization (e.g. Chinese names as Pinyin). Do not translate names into the target language.
+    3. NATURAL: Translate so it sounds natural and idiomatic in the target language. Preserve tone and intent; avoid word-for-word translation when it would sound unnatural. Use common expressions where appropriate.
+    4. OUTPUT: Return ONLY valid JSON: a single object with "text" and "segments" keys. Keep every other field (start, end, id, tokens, etc.) EXACTLY the same. Ensure every string is properly escaped and every array element is separated by commas.
+    """
+    direction = f"Translate the 'text' fields in the following JSON{from_desc} to the language code: '{target_language_code}'."
     prompt = f"""
-    You are a professional subtitle translator. 
-    Translate the 'text' fields in the following JSON object to the language code: '{target_language_code}'.
-    Keep all other fields (start, end, id, tokens, etc.) EXACTLY the same.
-    Do not change the JSON structure. Return ONLY the translated JSON object.
-    
+    You are a professional subtitle translator.
+    {direction}
+    {rules}
     JSON Data:
     {json.dumps(payload)}
     """
-    
-    try:
-        response = client.models.generate_content(
-            model = "gemini-2.5-flash",
-            contents = prompt,
-            config = {
-                "response_mime_type": "application/json"
-            }
-        )
-        
-        # Parse the JSON string returned by Gemini back into a Python dictionary
-        translated_data = json.loads(response.text)
-        return translated_data['text'], translated_data['segments']
-    except Exception as e:
-        print(f"❌ Gemini Translation Failed: {e}")
-        raise e
+    last_error = None
+    for attempt in range(max_retries + 1):
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+                config={"response_mime_type": "application/json"},
+            )
+            translated_data = json.loads(response.text)
+            if "text" not in translated_data or "segments" not in translated_data:
+                last_error = ValueError("Response missing 'text' or 'segments'")
+                continue
+            out_segments = translated_data["segments"]
+            out_text = translated_data["text"]
+            out_segments, timing_ok = _validate_and_fix_segments(out_segments, segments)
+            if not timing_ok:
+                out_text = " ".join((s.get("text") or "").strip() for s in out_segments)
+            translated_data["segments"] = out_segments
+            translated_data["text"] = out_text
+            return translated_data["text"], translated_data["segments"]
+        except json.JSONDecodeError as e:
+            last_error = e
+            print(f"⚠️ Gemini JSON parse error (attempt {attempt + 1}/{max_retries + 1}): {e}")
+            if attempt < max_retries:
+                time.sleep(2)
+        except Exception as e:
+            print(f"❌ Gemini Translation Failed: {e}")
+            raise
+    print(f"❌ Gemini Translation Failed after {max_retries + 1} attempts: {last_error}")
+    raise last_error
+
+
+def get_user_friendly_error(stage, message):
+    """Map technical stage + message to a short message the user can understand."""
+    msg = (message or "").lower()
+    if "connection reset" in msg or "channel is closed" in msg or "stream connection lost" in msg:
+        return "The connection was interrupted. We'll try again."
+    if "timeout" in msg or "timed out" in msg:
+        return "The request took too long. We'll try again."
+    if "out of memory" in msg or "oom" in msg:
+        return "Processing ran out of memory. Try a shorter file or try again later."
+    if "whisper" in msg or "transcri" in msg:
+        return "Transcription failed. Check that the file has clear audio and try again."
+    if "gemini" in msg or "translation" in msg or "translate" in msg or "expecting" in msg or "json" in msg:
+        return "Translation failed temporarily. We'll try again."
+    if "minio" in msg or "s3" in msg or "storage" in msg or "upload" in msg:
+        return "Storage error. Please try again in a moment."
+    if "network" in msg or "fetch" in msg or "connection" in msg:
+        return "A network error occurred. We'll try again."
+    if "unsupported" in msg or "format" in msg:
+        return "This file format is not supported."
+    if "empty" in msg:
+        return "The file appears to be empty. Please upload a valid file."
+    return "Something went wrong during processing. Please try again or try a different file."
+
 
 def process_message(ch, method, properties, body):
     """
@@ -151,6 +214,7 @@ def process_message(ch, method, properties, body):
     model_name = 'small'
     current_stage = "INITIALIZING"
     completed_successfully = False
+    processing_attempt = 1
 
     try:
         message = json.loads(body.decode('utf-8'))
@@ -164,14 +228,35 @@ def process_message(ch, method, properties, body):
         print(f"   - File Key: {file_key}")
         print(f"   - Target Language Code: {target_language_code}")
 
-        # Update Status to PROCESSING
-        db.media.update_one(
-            {"_id" : ObjectId(media_id)},
-            {"$set": {
-                "status": "PROCESSING", 
-                "errorDetails": None,
-            }}
-        )
+        # Detect retry: if media was FAILED with attempt 1, this is attempt 2
+        media_doc = db.media.find_one({"_id": ObjectId(media_id)})
+        if media_doc and media_doc.get("status") == "FAILED":
+            ed = media_doc.get("errorDetails") or {}
+            if ed.get("attempt") == 1:
+                processing_attempt = 2
+                print(f"   🔄 Retrying (attempt 2)...")
+                db.media.update_one(
+                    {"_id": ObjectId(media_id)},
+                    {"$set": {
+                        "status": "PROCESSING",
+                        "errorDetails": {
+                            "stage": None,
+                            "message": None,
+                            "userMessage": "Retrying (attempt 2)...",
+                            "attempt": 2,
+                        },
+                    }}
+                )
+            else:
+                db.media.update_one(
+                    {"_id": ObjectId(media_id)},
+                    {"$set": {"status": "PROCESSING", "errorDetails": None}}
+                )
+        else:
+            db.media.update_one(
+                {"_id": ObjectId(media_id)},
+                {"$set": {"status": "PROCESSING", "errorDetails": None}}
+            )
 
         # Define safe local file names
         _, ext = os.path.splitext(file_key.lower())
@@ -216,8 +301,8 @@ def process_message(ch, method, properties, body):
         print(f"🤖 Transcribing Audio on {torch.cuda.get_device_name(0)}...")
         model_start = time.time()
 
-        # Determine Whisper Task (Transcribe vs Native English Translate)
-        whisper_task = "translate" if target_language_code != 'original' else "transcribe"
+        # Determine Whisper Task: "translate" = output English only; "transcribe" = output in source language
+        whisper_task = "translate" if target_language_code == 'en' else "transcribe"
 
         if source_language_code and source_language_code != 'auto':
             print(f"   -> Forcing Whisper to use source language: '{source_language_code}'")
@@ -237,19 +322,39 @@ def process_message(ch, method, properties, body):
 
         model_end = time.time()
 
-        # Whisper's detected source language
+        # Whisper's detected source language (effective source = forced source or detected)
         detected_lang = result.get("language", "en")
+        effective_source = (source_language_code if (source_language_code and source_language_code != 'auto') else detected_lang).lower()
+        target_normalized = (target_language_code or "").lower()
         original_text = result["text"].strip()
         original_segments = result.get('segments', [])
 
-        if target_language_code == 'original' or target_language_code == 'en':
+        if target_language_code == 'original':
             final_text = original_text
             final_segments = original_segments
-            output_lang = detected_lang if target_language_code == 'original' else 'en'
+            output_lang = detected_lang
+        elif target_language_code == 'en':
+            final_text = original_text
+            final_segments = original_segments
+            output_lang = 'en'
+        elif target_normalized == effective_source or target_normalized == detected_lang.lower():
+            # Same language: Whisper already produced target language, no need for Gemini
+            print(f"   -> Source and target both '{effective_source}'; using Whisper output (no Gemini).")
+            final_text = original_text
+            final_segments = original_segments
+            output_lang = target_language_code
         else:
+            # Pivot via English: source → en → target. Ensures segments sent to final step are in English for consistent quality.
             current_stage = "TRANSLATING_JSON"
-            print(f"🧠 Pivot Translation! Gemini translating to '{target_language_code}'...")
-            final_text, final_segments = translate_transcript_via_gemini(original_text, original_segments, target_language_code)
+            print(f"🧠 Pivot via English: {effective_source} → en → {target_language_code}")
+            # Step 1: Translate source language to English (segments will be in English)
+            english_text, english_segments = translate_transcript_via_gemini(
+                original_text, original_segments, "en", source_language_code=effective_source
+            )
+            # Step 2: Translate English to target language (input is always English = consistent)
+            final_text, final_segments = translate_transcript_via_gemini(
+                english_text, english_segments, target_language_code, source_language_code="en"
+            )
             output_lang = target_language_code
 
         # Calculate AI Confidence (0 to 1) from Whisper's log probabilities
@@ -324,27 +429,34 @@ def process_message(ch, method, properties, body):
     except Exception as e:
         print(f"❌ Error processing message: {e}")
         if media_id and not completed_successfully:
+            user_message = get_user_friendly_error(current_stage, str(e))
+            if processing_attempt >= 2:
+                user_message = f"Failed after 2 attempts. {user_message}"
             db.media.update_one(
                 {"_id": ObjectId(media_id)},
                 {"$set": {
                     "status": "FAILED",
                     "errorDetails": {
                         "stage": current_stage,
-                        "message": str(e)
-                    }
+                        "message": str(e),
+                        "userMessage": user_message,
+                        "attempt": processing_attempt,
+                    },
                 }}
             )
         if not completed_successfully:
+            requeue = processing_attempt == 1
             ch.basic_nack(
                 delivery_tag=method.delivery_tag,
-                requeue=False
+                requeue=requeue
             )
+            if requeue:
+                print(f"   📤 Message requeued for retry (attempt 2).")
         elif completed_successfully:
             # Work was done but ack failed (e.g. connection reset). Do not nack so message is not requeued.
             print("⚠️ Ack failed but transcript was saved; message will not be requeued.")
 
     finally:
-        # Clean up temporary files
         print("🧹 Cleaning up temporary files...")
         for path in [local_raw_path, local_audio_path, local_json_path]:
             if path is not None and os.path.exists(path):

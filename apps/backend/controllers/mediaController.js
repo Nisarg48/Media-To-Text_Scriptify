@@ -108,7 +108,6 @@ const finalizeUpload = async (req, res) => {
 // @access Private
 const getUserMedia = async (req, res) => {
     try {
-        // Find all media uploaded by this user, sorted by newest first
         const mediaList = await Media.find({ mediaUploadedBy: req.user.id })
             .sort({ createdAt: -1 })
             .select('-storage');
@@ -128,7 +127,7 @@ const getUserMedia = async (req, res) => {
 // @access Private
 const getMediaById = async (req, res) => {
     try {
-        const media = await Media.findOne({ 
+        let media = await Media.findOne({ 
             _id: new mongoose.Types.ObjectId(req.params.id), 
             mediaUploadedBy: req.user.id 
         });

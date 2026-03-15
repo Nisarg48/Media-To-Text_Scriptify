@@ -28,6 +28,10 @@ export default {
           '0%, 100%': { transform: 'translateY(0)' },
           '50%': { transform: 'translateY(-6px)' },
         },
+        'progress-pulse': {
+          '0%, 100%': { opacity: '0.6' },
+          '50%': { opacity: '1' },
+        },
         'shimmer': {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
@@ -39,6 +43,7 @@ export default {
         'scale-in': 'scale-in 0.35s ease-out forwards',
         'shake': 'shake 0.4s ease-in-out',
         'float': 'float 3s ease-in-out infinite',
+        'progress-pulse': 'progress-pulse 1.5s ease-in-out infinite',
       },
     },
   },

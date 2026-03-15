@@ -19,7 +19,7 @@ const ERROR_PATTERNS = [
     message: 'Transcription failed. Check that the file has clear audio and try again.',
   },
   {
-    test: /gemini|translation|translate/i,
+    test: /gemini|translation|translate|expecting|json decode/i,
     message: 'Translation failed. You can try again or use a different target language.',
   },
   {

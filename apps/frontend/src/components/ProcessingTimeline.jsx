@@ -11,7 +11,7 @@ function getStepIndex(status) {
   return -1;
 }
 
-export default function ProcessingTimeline({ status }) {
+export default function ProcessingTimeline({ status, retryAttempt }) {
   const currentIndex = getStepIndex(status);
 
   return (
@@ -21,32 +21,34 @@ export default function ProcessingTimeline({ status }) {
       </h3>
       <div className="flex items-start">
         {STEPS.map((step, i) => {
-          const isActive = i === currentIndex;
           const isPast = i < currentIndex;
+          const isActive = i === currentIndex;
+          const isProcessingStep = step.key === 'PROCESSING';
+          const showInProgress = isActive && isProcessingStep;
           return (
             <div key={step.key} className="flex flex-1 flex-col items-center">
               <div className="flex w-full items-center">
                 {i > 0 && (
                   <div
-                    className={`h-0.5 flex-1 transition-all duration-500 ${
+                    className={`h-1 flex-1 rounded-full transition-all duration-500 ${
                       isPast ? 'bg-emerald-500' : 'bg-slate-200'
                     }`}
                   />
                 )}
                 <div
                   className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-all duration-300 ${
-                    isActive
-                      ? 'scale-110 bg-emerald-500 text-white ring-4 ring-emerald-500/30'
-                      : isPast
-                        ? 'bg-emerald-500 text-white'
+                    isPast
+                      ? 'bg-emerald-500 text-white'
+                      : isActive
+                        ? 'bg-emerald-500 text-white ring-4 ring-emerald-500/30'
                         : 'bg-slate-200 text-slate-500'
-                  }`}
+                  } ${showInProgress ? 'animate-pulse' : ''}`}
                 >
                   {isPast ? '✓' : i + 1}
                 </div>
                 {i < STEPS.length - 1 && (
                   <div
-                    className={`h-0.5 flex-1 transition-all duration-500 ${
+                    className={`h-1 flex-1 rounded-full transition-all duration-500 ${
                       isPast ? 'bg-emerald-500' : 'bg-slate-200'
                     }`}
                   />
@@ -58,6 +60,9 @@ export default function ProcessingTimeline({ status }) {
                 }`}
               >
                 {step.label}
+                {showInProgress && (
+                  <span className="ml-1 text-slate-500">(in progress)</span>
+                )}
               </span>
             </div>
           );
