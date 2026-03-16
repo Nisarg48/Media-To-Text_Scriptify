@@ -58,6 +58,7 @@ export default function MediaDetail() {
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [showTechnicalError, setShowTechnicalError] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const loadMedia = useCallback(async () => {
     if (!id) return;
@@ -185,10 +186,11 @@ export default function MediaDetail() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!id || !window.confirm('Delete this media and its transcript? This cannot be undone.')) return;
+  const confirmDelete = async () => {
+    if (!id) return;
     try {
       await apiClient.delete(`/media/${id}`);
+      setShowDeleteModal(false);
       navigate('/dashboard', { replace: true });
     } catch (err) {
       setError(err.response?.data?.msg || 'Failed to delete.');
@@ -343,8 +345,10 @@ export default function MediaDetail() {
                       <li
                         key={i}
                         ref={(el) => { segmentRefs.current[i] = el; }}
-                        className={`rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2.5 transition-all duration-200 ${
-                          isActive ? 'border-emerald-400 bg-emerald-50 ring-1 ring-emerald-400/30' : 'hover:border-slate-300 hover:bg-slate-50'
+                        className={`rounded-lg border px-3 py-2.5 transition-all duration-200 ${
+                          isActive
+                            ? 'border-emerald-500 bg-emerald-100 shadow-sm ring-2 ring-emerald-400/50'
+                            : 'border-slate-200 bg-slate-50/80 hover:border-slate-300 hover:bg-slate-50'
                         }`}
                       >
                         <input
@@ -352,7 +356,7 @@ export default function MediaDetail() {
                           value={seg.text ?? ''}
                           onChange={(e) => handleSegmentChange(i, e.target.value)}
                           className={`w-full border-0 bg-transparent text-sm outline-none focus:ring-0 ${
-                            isActive ? 'font-medium text-emerald-900' : 'text-slate-700'
+                            isActive ? 'font-semibold text-emerald-900' : 'text-slate-700'
                           } placeholder:text-slate-400`}
                           placeholder="—"
                         />
@@ -362,6 +366,15 @@ export default function MediaDetail() {
                 </ul>
               )}
             </div>
+            <div className="shrink-0 border-t border-slate-200 bg-slate-50/50 p-3">
+              <button
+                type="button"
+                onClick={handleDownloadSrt}
+                className="w-full rounded-lg border-2 border-emerald-500 bg-emerald-500 px-3 py-2.5 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:bg-emerald-600 hover:border-emerald-600 hover:shadow-lg active:scale-[0.98]"
+              >
+                Download SRT
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -370,28 +383,54 @@ export default function MediaDetail() {
         <p className="mb-4 text-sm text-red-600">{error}</p>
       )}
 
-      {/* Toolbar: Download SRT when completed and has content */}
-      {media.status === 'COMPLETED' && content && (
-        <div className="mb-6 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={handleDownloadSrt}
-            className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition-all duration-200 hover:bg-slate-50"
-          >
-            Download SRT
-          </button>
-        </div>
-      )}
-
-      <div className="flex justify-end">
+      <div className="mt-8 flex justify-end">
         <button
           type="button"
-          onClick={handleDelete}
+          onClick={() => setShowDeleteModal(true)}
           className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 transition-all duration-200 hover:bg-red-100"
         >
           Delete media
         </button>
       </div>
+
+      {/* Delete confirmation modal */}
+      {showDeleteModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-modal-title"
+        >
+          <div
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onClick={() => setShowDeleteModal(false)}
+          />
+          <div className="relative w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+            <h2 id="delete-modal-title" className="text-lg font-semibold text-slate-800">
+              Delete media?
+            </h2>
+            <p className="mt-2 text-sm text-slate-600">
+              This will delete the media and its transcript. This cannot be undone.
+            </p>
+            <div className="mt-6 flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                className="rounded-xl bg-red-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-600"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
