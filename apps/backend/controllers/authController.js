@@ -1,8 +1,20 @@
-const { validationResult }= require('express-validator');
+const { validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-
 const User = require('../models/User');
+
+/**
+ * Derive role from email pattern:
+ *   *.admin@scriptify.com  → 'admin'
+ *   *@scriptify.com        → 'worker'
+ *   anything else          → 'user'
+ */
+function getRoleFromEmail(email) {
+    const lower = email.toLowerCase();
+    if (lower.endsWith('.admin@scriptify.com') || lower === 'admin@scriptify.com') return 'admin';
+    if (lower.endsWith('@scriptify.com')) return 'worker';
+    return 'user';
+}
 
 // @route   POST /api/auth/register
 // @desc    Register a new user
@@ -21,30 +33,20 @@ const register = async (req, res) => {
             return res.status(400).json({ errors: [{ msg: 'User already exists' }] });
         }
 
-        user = new User({ name, email, password });
+        const role = getRoleFromEmail(email);
+        user = new User({ name, email, password, role });
 
         const salt = await bcrypt.genSalt(10);
         user.password = await bcrypt.hash(password, salt);
-
         await user.save();
 
-        const payload = { user: { id: user.id } };
+        const payload = { user: { id: user.id, role: user.role } };
+        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-        jwt.sign(
-            payload,
-            process.env.JWT_SECRET,
-            { expiresIn: '7d' },
-            (err, token) => {
-                if (err) throw err;
-                res.json({ token });
-            }
-        );
-
-        res.status(201).json({ msg: 'User registered successfully'});
-
+        return res.status(201).json({ token });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        return res.status(500).send('Server error');
     }
 };
 
@@ -73,27 +75,17 @@ const login = async (req, res) => {
         user.lastLogin = Date.now();
         await user.save();
 
-        const payload = { user: { id: user.id } };
+        // Derive role: DB value takes precedence; fall back to email pattern for legacy users
+        const role = user.role || getRoleFromEmail(user.email);
 
-        let token = jwt.sign(
-            payload, 
-            process.env.JWT_SECRET,
-            { expiresIn: '7d' },
-            // (err, token) => {
-            //     if (err) throw err;
-            //     res.json({ token });
-            // }
-        );
+        const payload = { user: { id: user.id, role } };
+        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-        res.status(200).json({ msg: 'Login successful', token });
-
+        return res.status(200).json({ msg: 'Login successful', token });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        return res.status(500).send('Server error');
     }
 };
 
-module.exports = {
-    register,
-    login
-};
+module.exports = { register, login };

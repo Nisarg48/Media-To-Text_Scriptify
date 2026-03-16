@@ -1,13 +1,20 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import AdminRoute from './components/AdminRoute';
 import DashboardLayout from './components/DashboardLayout';
+import AdminLayout from './components/AdminLayout';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Upload from './pages/Upload';
 import MediaDetail from './pages/MediaDetail';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminMedia from './pages/admin/AdminMedia';
+import AdminMediaDetail from './pages/admin/AdminMediaDetail';
+import AdminUsers from './pages/admin/AdminUsers';
+import AdminJobs from './pages/admin/AdminJobs';
 
 function App() {
   return (
@@ -18,6 +25,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
+          {/* User dashboard */}
           <Route
             element={
               <ProtectedRoute>
@@ -28,6 +36,21 @@ function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="dashboard/upload" element={<Upload />} />
             <Route path="media/:id" element={<MediaDetail />} />
+          </Route>
+
+          {/* Admin panel */}
+          <Route
+            element={
+              <AdminRoute>
+                <AdminLayout />
+              </AdminRoute>
+            }
+          >
+            <Route path="admin" element={<AdminDashboard />} />
+            <Route path="admin/media" element={<AdminMedia />} />
+            <Route path="admin/media/:id" element={<AdminMediaDetail />} />
+            <Route path="admin/users" element={<AdminUsers />} />
+            <Route path="admin/jobs" element={<AdminJobs />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

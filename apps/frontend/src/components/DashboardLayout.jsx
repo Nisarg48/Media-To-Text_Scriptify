@@ -3,7 +3,7 @@ import { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 
 export default function DashboardLayout() {
-  const { logout } = useContext(AuthContext);
+  const { logout, user } = useContext(AuthContext);
   const navigate = useNavigate();
 
   return (
@@ -30,6 +30,14 @@ export default function DashboardLayout() {
           >
             Upload
           </Link>
+          {user?.role === 'admin' && (
+            <Link
+              to="/admin"
+              className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 transition-all duration-200 hover:bg-rose-100 hover:text-rose-800"
+            >
+              Admin
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => {

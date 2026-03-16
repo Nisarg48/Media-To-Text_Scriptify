@@ -36,6 +36,14 @@ export default {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
         },
+        'slide-in-left': {
+          '0%': { opacity: '0', transform: 'translateX(-100%)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+        'slide-in-right': {
+          '0%': { opacity: '0', transform: 'translateX(100%)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
       },
       animation: {
         'fade-in': 'fade-in 0.5s ease-out forwards',
@@ -44,6 +52,8 @@ export default {
         'shake': 'shake 0.4s ease-in-out',
         'float': 'float 3s ease-in-out infinite',
         'progress-pulse': 'progress-pulse 1.5s ease-in-out infinite',
+        'slide-in-left': 'slide-in-left 0.28s ease-out forwards',
+        'slide-in-right': 'slide-in-right 0.28s ease-out forwards',
       },
     },
   },

@@ -25,6 +25,7 @@ const mediaSchema = new mongoose.Schema(
       userMessage: { type: String },
       attempt: { type: Number },
     },
+    deletedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

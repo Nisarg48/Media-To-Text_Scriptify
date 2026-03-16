@@ -108,7 +108,10 @@ const finalizeUpload = async (req, res) => {
 // @access Private
 const getUserMedia = async (req, res) => {
     try {
-        const mediaList = await Media.find({ mediaUploadedBy: req.user.id })
+        const mediaList = await Media.find({
+            mediaUploadedBy: req.user.id,
+            $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
+        })
             .sort({ createdAt: -1 })
             .select('-storage');
         
@@ -136,6 +139,10 @@ const getMediaById = async (req, res) => {
             return res.status(404).json({ msg: 'Media not found' });
         }
 
+        if (media.deletedAt) {
+            return res.status(404).json({ msg: 'Media not found' });
+        }
+
         const transcript = await Transcript.findOne({ mediaId: media._id });
 
         res.status(200).json({
@@ -154,56 +161,55 @@ const getMediaById = async (req, res) => {
 };
 
 // @route  DELETE /api/media/:id
-// @desc   Delete a media record, its transcript, and files from MinIO
+// @desc   Soft delete: remove media and transcript files from MinIO, mark media as deleted in DB. Record kept for admin/audit.
 // @access Private
 const deleteMediaById = async (req, res) => {
     try {
-        const media = await Media.findOne({ 
-            _id: new mongoose.Types.ObjectId(req.params.id), 
-            mediaUploadedBy: req.user.id 
+        const media = await Media.findOne({
+            _id: new mongoose.Types.ObjectId(req.params.id),
+            mediaUploadedBy: req.user.id,
         });
 
         if (!media) {
             return res.status(404).json({ msg: 'Media not found' });
         }
 
-        // Delete the raw video file from MinIO (Soft Fail)
+        if (media.deletedAt) {
+            return res.status(400).json({ msg: 'Media is already deleted' });
+        }
+
+        // Delete the media file from MinIO (soft fail on error)
         if (media.storage && media.storage.key) {
             const deleteVideoCommand = new DeleteObjectCommand({
                 Bucket: process.env.STORAGE_BUCKET_NAME,
                 Key: media.storage.key,
             });
-            try { 
-                await s3Client.send(deleteVideoCommand); 
+            try {
+                await s3Client.send(deleteVideoCommand);
             } catch (error) {
-                // Log the error but DO NOT stop the function
-                console.warn(`MinIO Video Delete Warning: Could not delete ${media.storage.key}`, error.message); 
+                console.warn(`MinIO Video Delete Warning: Could not delete ${media.storage.key}`, error.message);
             }
         }
 
-        // Find and delete the Transcript from DB and MinIO
+        // Delete transcript JSON from MinIO; keep Transcript document in DB
         const transcript = await Transcript.findOne({ mediaId: media._id });
-        if (transcript) {
-            if (transcript.jsonFile && transcript.jsonFile.key) {
-                const deleteJsonCommand = new DeleteObjectCommand({
-                    Bucket: process.env.STORAGE_BUCKET_NAME,
-                    Key: transcript.jsonFile.key,
-                });
-                try { 
-                    await s3Client.send(deleteJsonCommand); 
-                } catch (error) { 
-                    console.warn(`MinIO JSON Delete Warning: Could not delete ${transcript.jsonFile.key}`, error.message); 
-                } 
+        if (transcript && transcript.jsonFile && transcript.jsonFile.key) {
+            const deleteJsonCommand = new DeleteObjectCommand({
+                Bucket: process.env.STORAGE_BUCKET_NAME,
+                Key: transcript.jsonFile.key,
+            });
+            try {
+                await s3Client.send(deleteJsonCommand);
+            } catch (error) {
+                console.warn(`MinIO JSON Delete Warning: Could not delete ${transcript.jsonFile.key}`, error.message);
             }
-            // NEW: Actually delete the transcript from MongoDB!
-            await Transcript.deleteOne({ _id: transcript._id });
         }
 
-        // Finally, delete the Media record from MongoDB
-        await Media.deleteOne({ _id: media._id });
+        // Mark media as deleted in DB (do not remove Media or Transcript documents)
+        media.deletedAt = new Date();
+        await media.save();
 
-        res.status(200).json({ msg: 'Media and associated files completely deleted' });
-
+        res.status(200).json({ msg: 'Media deleted. Files removed from storage; record kept.' });
     } catch (error) {
         console.error("Error deleting media:", error);
         res.status(500).json({ message: 'Server error' });
@@ -215,12 +221,16 @@ const deleteMediaById = async (req, res) => {
 // @access Private
 const getPlaybackUrl = async (req, res) => {
     try {
-        const media = await Media.findOne({ 
-            _id: new mongoose.Types.ObjectId(req.params.id), 
-            mediaUploadedBy: req.user.id 
+        const media = await Media.findOne({
+            _id: new mongoose.Types.ObjectId(req.params.id),
+            mediaUploadedBy: req.user.id,
         });
 
         if (!media || !media.storage.key) {
+            return res.status(404).json({ msg: 'Media file not found' });
+        }
+
+        if (media.deletedAt) {
             return res.status(404).json({ msg: 'Media file not found' });
         }
 
