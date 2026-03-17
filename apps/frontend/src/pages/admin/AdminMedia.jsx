@@ -106,7 +106,7 @@ export default function AdminMedia() {
 
     // Re-fetch when page changes (not debounced)
     useEffect(() => {
-        fetchMedia({ search, statusFilter, typeFilter, userId, page });
+        fetchMedia({ search, statusFilter, typeFilter, userId, page }); // eslint-disable-line react-hooks/set-state-in-effect -- intentional fetch on page change
     }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const totalPages = Math.ceil(total / LIMIT);

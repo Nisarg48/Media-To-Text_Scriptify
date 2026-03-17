@@ -112,7 +112,6 @@ export default function MediaDetail() {
 
   const segments = content?.segments ?? [];
   const currentSegmentIndex = getCurrentSegmentIndex(segments, currentTime);
-  const currentSegment = segments[currentSegmentIndex];
 
   useEffect(() => {
     const container = transcriptScrollRef.current;

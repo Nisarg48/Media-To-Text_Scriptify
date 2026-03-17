@@ -7,7 +7,8 @@ export function useCountUp(target, duration = 1000) {
 
     useEffect(() => {
         if (target === 0) {
-            setValue(0);
+            // Intentional reset when target is 0
+            setValue(0); // eslint-disable-line react-hooks/set-state-in-effect
             return;
         }
 

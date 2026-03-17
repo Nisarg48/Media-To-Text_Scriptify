@@ -11,7 +11,7 @@ function getStepIndex(status) {
   return -1;
 }
 
-export default function ProcessingTimeline({ status, retryAttempt }) {
+export default function ProcessingTimeline({ status }) {
   const currentIndex = getStepIndex(status);
 
   return (

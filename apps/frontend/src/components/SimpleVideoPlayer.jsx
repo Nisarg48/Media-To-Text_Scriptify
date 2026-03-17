@@ -5,6 +5,19 @@ const DEFAULT_FONT_INDEX = 1;
 const DEFAULT_SUBTITLE_POSITION = { x: 50, y: 88 };
 const REFERENCE_WIDTH = 640;
 
+function ControlButton({ onClick, title, shortcut, icon, className = '' }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-lg p-2 text-slate-300 transition-all duration-200 hover:bg-white/15 hover:text-white hover:scale-105 active:scale-95 ${className}`}
+      title={`${title} (${shortcut})`}
+    >
+      {icon}
+    </button>
+  );
+}
+
 /**
  * VLC-style video player: play/pause, ±10s, progress bar with fill + thumb,
  * fullscreen, subtitle font size, draggable subtitle, keyboard shortcuts.
@@ -188,17 +201,6 @@ export default function SimpleVideoPlayer({ src, segments = [], currentSegmentIn
 
   const scale = containerWidth / REFERENCE_WIDTH;
   const subtitleFontSizePx = Math.round(FONT_SIZES[subtitleFontIndex] * scale);
-
-  const ControlButton = ({ onClick, title, shortcut, icon, className = '' }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-lg p-2 text-slate-300 transition-all duration-200 hover:bg-white/15 hover:text-white hover:scale-105 active:scale-95 ${className}`}
-      title={`${title} (${shortcut})`}
-    >
-      {icon}
-    </button>
-  );
 
   return (
     <div
