@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: apps/backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: apps/backend
+
+      - name: Lint
+        run: npm run lint
+        working-directory: apps/backend
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: apps/frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: apps/frontend
+
+      - name: Lint
+        run: npm run lint
+        working-directory: apps/frontend
+
+      - name: Build
+        run: npm run build
+        working-directory: apps/frontend
+        env:
+          VITE_API_BASE_URL: http://localhost:3000/api
+
+  worker:
+    name: AI Worker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+        working-directory: apps/ai_worker
+
+      - name: Syntax check
+        run: python -m py_compile main.py
+        working-directory: apps/ai_worker
