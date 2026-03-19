@@ -1,0 +1,13 @@
+# Override to enable NVIDIA GPU for the worker.
+# Prerequisites: NVIDIA drivers + nvidia-container-toolkit on host.
+# Install toolkit: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+#
+# To verify GPU is used, check worker logs:
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml logs worker
+
+services:
+  scriptify-worker:
+    runtime: nvidia

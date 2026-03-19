@@ -1,0 +1,98 @@
+# Full stack for local dev. Run from repo root: docker compose up --build
+# Requires a .env file at repo root (copy from .env.example and fill values).
+# For GPU (NVIDIA): docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build
+
+services:
+  scriptify-backend:
+    image: nisarg48/scriptify-backend:1.0.0
+    container_name: scriptify-backend
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    ports:
+      - "${PORT:-5000}:${PORT:-5000}"
+    environment:
+      PORT: ${PORT:-5000}
+      MONGODB_URI: ${MONGODB_URI}
+      JWT_SECRET: ${JWT_SECRET}
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      RABBITMQ_QUEUE: ${RABBITMQ_QUEUE:-scriptify-transcribe-queue}
+      STORAGE_ENDPOINT: http://minio:9000
+      STORAGE_PUBLIC_ENDPOINT: http://localhost:9000
+      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-minioadmin}
+      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:-minioadmin}
+      STORAGE_BUCKET_NAME: ${STORAGE_BUCKET_NAME:-scriptify-dev}
+    depends_on:
+      - scriptify-rabbitmq
+      - scriptify-minio
+
+  scriptify-frontend:
+    image: nisarg48/scriptify-frontend:1.0.0
+    container_name: scriptify-frontend
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:5000/api}
+    ports:
+      - "80:80"
+    depends_on:
+      - scriptify-backend
+
+  scriptify-worker:
+    image: nisarg48/scriptify-worker:1.0.0
+    container_name: scriptify-worker
+    build:
+      context: ./apps/ai_worker
+      dockerfile: Dockerfile
+    environment:
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      RABBITMQ_QUEUE: ${RABBITMQ_QUEUE:-scriptify-transcribe-queue}
+      STORAGE_ENDPOINT: http://minio:9000
+      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-minioadmin}
+      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:-minioadmin}
+      STORAGE_BUCKET_NAME: ${STORAGE_BUCKET_NAME:-scriptify-dev}
+      MONGODB_URL: ${MONGODB_URL}
+      MONGODB_DATABASE_NAME: ${MONGODB_DATABASE_NAME:-scriptify_dev}
+      SUPPORTED_EXTENSIONS: ${SUPPORTED_EXTENSIONS:-.mp3,.wav,.m4a,.flac,.ogg,.mp4,.mkv,.avi,.mov,.webm}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      WHISPER_MODEL: ${WHISPER_MODEL:-small}
+    depends_on:
+      - scriptify-rabbitmq
+      - scriptify-minio
+
+  scriptify-rabbitmq:
+    image: rabbitmq:3-management
+    container_name: scriptify-rabbitmq
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      default:
+        aliases:
+          - rabbitmq
+
+  scriptify-minio:
+    image: minio/minio:latest
+    container_name: scriptify-minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET_KEY:-minioadmin}
+      # Browser uploads use presigned PUT to localhost:9000 — allow SPA origins
+      MINIO_API_CORS_ALLOW_ORIGIN: "*"
+    networks:
+      default:
+        aliases:
+          - minio
+
+volumes:
+  rabbitmq_data:
+  minio_data:
