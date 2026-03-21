@@ -26,6 +26,15 @@ function toSec(v) {
 // Don't switch to next segment until we're this far into it (reduces "one step ahead" feel)
 const SEGMENT_LEAD_IN = 0.12;
 
+/** Scroll only the transcript panel — never use scrollIntoView on segment nodes (it scrolls the whole page). */
+function scrollElementToTopOfContainer(container, el, behavior = 'smooth') {
+  if (!container || !el) return;
+  const padding = 8;
+  const nextTop =
+    el.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop - padding;
+  container.scrollTo({ top: Math.max(0, nextTop), behavior });
+}
+
 function getCurrentSegmentIndex(segments, currentTime) {
   if (!segments?.length || currentTime == null) return -1;
   const t = currentTime;
@@ -45,10 +54,14 @@ function getCurrentSegmentIndex(segments, currentTime) {
 export default function MediaDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const videoRef = useRef(null);
+  /** Video (SimpleVideoPlayer) or audio element — pause when editing/scrolling transcript */
+  const playbackMediaRef = useRef(null);
   const transcriptScrollRef = useRef(null);
   const segmentRefs = useRef([]);
   const lastSavedSegmentsRef = useRef(null);
+  /** True while auto-scroll is running so we do not treat it as user scroll */
+  const programmaticTranscriptScrollRef = useRef(false);
+  const programmaticScrollClearTimerRef = useRef(null);
 
   const [media, setMedia] = useState(null);
   const [transcript, setTranscript] = useState(null);
@@ -120,23 +133,69 @@ export default function MediaDetail() {
   }, [media, id]);
 
   const handleTimeUpdate = useCallback(() => {
-    const v = videoRef.current;
+    const v = playbackMediaRef.current;
     if (v) setCurrentTime(v.currentTime);
   }, []);
+
+  const pausePlayback = useCallback(() => {
+    const el = playbackMediaRef.current;
+    if (el && !el.paused) el.pause();
+  }, []);
+
+  /** When true, active line is pinned to the top of the transcript panel during playback */
+  const [followTranscriptScroll, setFollowTranscriptScroll] = useState(true);
 
   const segments = content?.segments ?? [];
   const currentSegmentIndex = getCurrentSegmentIndex(segments, currentTime);
 
   useEffect(() => {
-    const container = transcriptScrollRef.current;
-    const el = currentSegmentIndex >= 0 ? segmentRefs.current[currentSegmentIndex] : null;
-    if (!container || !el) return;
-    const containerHeight = container.clientHeight;
-    const elTop = el.offsetTop;
-    const elHalf = el.offsetHeight / 2;
-    const scrollTop = elTop - containerHeight / 2 + elHalf;
-    container.scrollTo({ top: Math.max(0, scrollTop), behavior: 'smooth' });
-  }, [currentSegmentIndex]);
+    if (!followTranscriptScroll) return undefined;
+    const raf = requestAnimationFrame(() => {
+      const container = transcriptScrollRef.current;
+      const el = currentSegmentIndex >= 0 ? segmentRefs.current[currentSegmentIndex] : null;
+      if (!container || !el) return;
+      programmaticTranscriptScrollRef.current = true;
+      if (programmaticScrollClearTimerRef.current) {
+        window.clearTimeout(programmaticScrollClearTimerRef.current);
+      }
+      scrollElementToTopOfContainer(container, el, 'smooth');
+      programmaticScrollClearTimerRef.current = window.setTimeout(() => {
+        programmaticTranscriptScrollRef.current = false;
+      }, 900);
+    });
+    return () => {
+      cancelAnimationFrame(raf);
+      if (programmaticScrollClearTimerRef.current) {
+        window.clearTimeout(programmaticScrollClearTimerRef.current);
+      }
+    };
+  }, [currentSegmentIndex, followTranscriptScroll, segments.length]);
+
+  const handleTranscriptPanelScroll = useCallback(() => {
+    if (programmaticTranscriptScrollRef.current) return;
+    pausePlayback();
+    setFollowTranscriptScroll(false);
+  }, [pausePlayback]);
+
+  useEffect(() => {
+    const ready = media?.status === 'COMPLETED' && !!playbackUrl;
+    if (!ready) return undefined;
+    let cleaned = false;
+    let attachedEl = null;
+    const onPlay = () => setFollowTranscriptScroll(true);
+    const timer = window.setTimeout(() => {
+      if (cleaned) return;
+      const el = playbackMediaRef.current;
+      if (!el) return;
+      attachedEl = el;
+      el.addEventListener('play', onPlay);
+    }, 0);
+    return () => {
+      cleaned = true;
+      window.clearTimeout(timer);
+      if (attachedEl) attachedEl.removeEventListener('play', onPlay);
+    };
+  }, [media?.status, playbackUrl]);
 
   const handleSave = async () => {
     if (!content?.segments || !id) return;
@@ -162,6 +221,7 @@ export default function MediaDetail() {
   };
 
   const handleSegmentChange = (index, newText) => {
+    setFollowTranscriptScroll(false);
     setContent((c) => {
       if (!c?.segments) return c;
       return {
@@ -403,16 +463,18 @@ export default function MediaDetail() {
                 currentSegmentIndex={currentSegmentIndex}
                 onTimeUpdate={(t) => setCurrentTime(t)}
                 isVideo={true}
+                playbackRef={playbackMediaRef}
               />
             ) : (
               <div className="rounded-xl border border-slate-200 bg-slate-900">
                 <audio
-                  ref={videoRef}
+                  ref={playbackMediaRef}
                   controls
                   className="w-full p-4"
                   src={playbackUrl}
                   preload="metadata"
                   onTimeUpdate={handleTimeUpdate}
+                  onPlay={() => setFollowTranscriptScroll(true)}
                 />
               </div>
             )}
@@ -432,7 +494,11 @@ export default function MediaDetail() {
                 {saveLoading ? 'Saving…' : saveSuccess ? 'Saved' : 'Save'}
               </button>
             </div>
-            <div ref={transcriptScrollRef} className="flex-1 overflow-y-auto overflow-x-hidden p-3">
+            <div
+              ref={transcriptScrollRef}
+              className="flex-1 overflow-y-auto overflow-x-hidden p-3"
+              onScroll={handleTranscriptPanelScroll}
+            >
               {!content ? (
                 <p className="py-4 text-center text-slate-500">Loading transcript…</p>
               ) : segments.length === 0 ? (
@@ -445,7 +511,7 @@ export default function MediaDetail() {
                       <li
                         key={i}
                         ref={(el) => { segmentRefs.current[i] = el; }}
-                        className={`rounded-lg border px-3 py-2.5 transition-all duration-200 ${
+                        className={`scroll-mt-2 rounded-lg border px-3 py-2.5 transition-all duration-200 ${
                           isActive
                             ? 'border-emerald-500 bg-emerald-100 shadow-sm ring-2 ring-emerald-400/50'
                             : 'border-slate-200 bg-slate-50/80 hover:border-slate-300 hover:bg-slate-50'
@@ -455,6 +521,10 @@ export default function MediaDetail() {
                           type="text"
                           value={seg.text ?? ''}
                           onChange={(e) => handleSegmentChange(i, e.target.value)}
+                          onFocus={() => {
+                            pausePlayback();
+                            setFollowTranscriptScroll(false);
+                          }}
                           className={`w-full border-0 bg-transparent text-sm outline-none focus:ring-0 ${
                             isActive ? 'font-semibold text-emerald-900' : 'text-slate-700'
                           } placeholder:text-slate-400`}

@@ -22,9 +22,27 @@ function ControlButton({ onClick, title, shortcut, icon, className = '' }) {
  * VLC-style video player: play/pause, ±10s, progress bar with fill + thumb,
  * fullscreen, subtitle font size, draggable subtitle, keyboard shortcuts.
  */
-export default function SimpleVideoPlayer({ src, segments = [], currentSegmentIndex, onTimeUpdate, isVideo = true }) {
+export default function SimpleVideoPlayer({
+  src,
+  segments = [],
+  currentSegmentIndex,
+  onTimeUpdate,
+  isVideo = true,
+  /** Optional: parent ref to the underlying video element (e.g. pause from transcript). */
+  playbackRef,
+}) {
   const containerRef = useRef(null);
   const videoRef = useRef(null);
+
+  const setVideoEl = useCallback(
+    (el) => {
+      videoRef.current = el;
+      if (playbackRef) {
+        playbackRef.current = el;
+      }
+    },
+    [playbackRef]
+  );
   const progressBarRef = useRef(null);
   const subtitleRef = useRef(null);
 
@@ -214,7 +232,7 @@ export default function SimpleVideoPlayer({ src, segments = [], currentSegmentIn
       >
         {isVideo ? (
           <video
-            ref={videoRef}
+            ref={setVideoEl}
             className="h-full w-full object-contain"
             src={src}
             preload="metadata"
@@ -222,7 +240,7 @@ export default function SimpleVideoPlayer({ src, segments = [], currentSegmentIn
           />
         ) : (
           <video
-            ref={videoRef}
+            ref={setVideoEl}
             className="h-full w-full object-contain"
             src={src}
             preload="metadata"
