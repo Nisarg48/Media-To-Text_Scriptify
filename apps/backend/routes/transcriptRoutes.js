@@ -1,9 +1,11 @@
 const express = require('express');
 const routes = express.Router();
 const { auth }= require('../middleware/auth');
-const { getTranscriptContent, 
-        updateTranscript, 
-        downloadSrt } = require('../controllers/transcriptController');
+const {
+    getTranscriptContent,
+    updateTranscript,
+    downloadExport,
+} = require('../controllers/transcriptController');
 
 // @route  GET /api/transcripts/:mediaId/content
 // @desc   Fetch the actual JSON transcript data from MinIO for the React Editor
@@ -15,9 +17,9 @@ routes.get('/:mediaId/content', auth, getTranscriptContent);
 // @access Private
 routes.put('/:mediaId', auth, updateTranscript);
 
-// @route  GET /api/transcripts/:mediaId/download
-// @desc   Read JSON from MinIO, convert to SRT, and trigger file download
+// @route  GET /api/transcripts/:mediaId/download?format=srt|vtt|txt
+// @desc   Export transcript (default format=srt)
 // @access Private
-routes.get('/:mediaId/download', auth, downloadSrt);
+routes.get('/:mediaId/download', auth, downloadExport);
 
 module.exports = routes;

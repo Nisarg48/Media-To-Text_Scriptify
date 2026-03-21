@@ -8,6 +8,7 @@ const {
     getAllUsers,
     getJobs,
     restoreMedia,
+    retryFailedJob,
 } = require('../controllers/adminController');
 
 // All admin routes require valid JWT + admin role
@@ -30,5 +31,8 @@ router.get('/jobs', getJobs);
 
 // POST /api/admin/media/:id/restore
 router.post('/media/:id/restore', restoreMedia);
+
+// POST /api/admin/media/:id/retry-job
+router.post('/media/:id/retry-job', retryFailedJob);
 
 module.exports = router;

@@ -2,57 +2,64 @@ const Transcript = require('../models/Transcript');
 const { GetObjectCommand, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { s3Client } = require('../config/storage');
 const mongoose = require('mongoose');
+const { assertUserOwnsMedia } = require('../middleware/mediaAccess');
+const {
+    segmentsToSrt,
+    segmentsToVtt,
+    segmentsToTxt,
+} = require('../utils/subtitleFormats');
 
-// --- HELPER: Convert MinIO Stream to String ---
 const streamToString = (stream) =>
     new Promise((resolve, reject) => {
         const chunks = [];
-        stream.on("data", (chunk) => chunks.push(chunk));
-        stream.on("error", reject);
-        stream.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+        stream.on('data', (chunk) => chunks.push(chunk));
+        stream.on('error', reject);
+        stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     });
 
-// --- HELPER: Format seconds (e.g., 3.32) to SRT timestamp (00:00:03,320) ---
-const formatSrtTime = (seconds) => {
-    const date = new Date(seconds * 1000);
-    const hh = String(Math.floor(seconds / 3600)).padStart(2, '0');
-    const mm = String(date.getUTCMinutes()).padStart(2, '0');
-    const ss = String(date.getUTCSeconds()).padStart(2, '0');
-    const ms = String(date.getUTCMilliseconds()).padStart(3, '0');
-    return `${hh}:${mm}:${ss},${ms}`;
-};
+async function loadTranscriptJsonForMedia(mediaId) {
+    const transcript = await Transcript.findOne({ mediaId: new mongoose.Types.ObjectId(mediaId) });
+    if (!transcript || !transcript.jsonFile) {
+        return { transcript: null, jsonData: null };
+    }
+
+    const getCommand = new GetObjectCommand({
+        Bucket: transcript.jsonFile.bucket,
+        Key: transcript.jsonFile.key,
+    });
+
+    const response = await s3Client.send(getCommand);
+    const jsonString = await streamToString(response.Body);
+    const jsonData = JSON.parse(jsonString);
+    return { transcript, jsonData };
+}
 
 // @route  GET /api/transcripts/:mediaId/content
-// @desc   Fetch the actual JSON transcript data from MinIO for the React Editor
-// @access Private
+// @access Private (must own media)
 const getTranscriptContent = async (req, res) => {
     try {
-        const transcript = await Transcript.findOne({ mediaId: new mongoose.Types.ObjectId(req.params.mediaId) });
-        if (!transcript || !transcript.jsonFile) {
+        const media = await assertUserOwnsMedia(req, res, req.params.mediaId);
+        if (!media) return;
+
+        const { transcript, jsonData } = await loadTranscriptJsonForMedia(req.params.mediaId);
+        if (!transcript || !jsonData) {
             return res.status(404).json({ msg: 'Transcript not found' });
         }
 
-        const getCommand = new GetObjectCommand({
-            Bucket: transcript.jsonFile.bucket,
-            Key: transcript.jsonFile.key,
-        });
-
-        const response = await s3Client.send(getCommand);
-        const jsonString = await streamToString(response.Body);
-        const jsonData = JSON.parse(jsonString);
-
         res.json(jsonData);
     } catch (error) {
-        console.error("Error fetching transcript content:", error);
+        console.error('Error fetching transcript content:', error);
         res.status(500).send('Server error');
     }
 };
 
 // @route  PUT /api/transcripts/:mediaId
-// @desc   Save human edits (updated text and segments) back to DB and MinIO
-// @access Private
+// @access Private (must own media)
 const updateTranscript = async (req, res) => {
     try {
+        const media = await assertUserOwnsMedia(req, res, req.params.mediaId);
+        if (!media) return;
+
         const { updatedText, updatedSegments } = req.body;
 
         const transcript = await Transcript.findOne({ mediaId: new mongoose.Types.ObjectId(req.params.mediaId) });
@@ -60,67 +67,77 @@ const updateTranscript = async (req, res) => {
             return res.status(404).json({ msg: 'Transcript not found' });
         }
 
-        // 1. Update the plain text in MongoDB
         transcript.plainText = updatedText;
         await transcript.save();
 
-        // 2. Overwrite the JSON file in MinIO
-        const newJsonData = JSON.stringify({
-            text: updatedText,
-            segments: updatedSegments
-        }, null, 2);
+        const newJsonData = JSON.stringify(
+            {
+                text: updatedText,
+                segments: updatedSegments,
+            },
+            null,
+            2
+        );
 
         const updateCommand = new PutObjectCommand({
             Bucket: transcript.jsonFile.bucket,
             Key: transcript.jsonFile.key,
             Body: newJsonData,
-            ContentType: 'application/json'
+            ContentType: 'application/json',
         });
 
         await s3Client.send(updateCommand);
 
         res.json({ msg: 'Transcript updated successfully' });
     } catch (error) {
-        console.error("Error updating transcript:", error);
+        console.error('Error updating transcript:', error);
         res.status(500).send('Server error');
     }
 };
 
-// @route  GET /api/transcripts/:mediaId/download
-// @desc   Read JSON from MinIO, convert to SRT, and trigger file download
-// @access Private
-const downloadSrt = async (req, res) => {
+/**
+ * GET /api/transcripts/:mediaId/download?format=srt|vtt|txt
+ * Default format=srt for backward compatibility.
+ */
+const downloadExport = async (req, res) => {
     try {
-        const transcript = await Transcript.findOne({ mediaId: new mongoose.Types.ObjectId(req.params.mediaId) });
-        if (!transcript || !transcript.jsonFile) {
+        const media = await assertUserOwnsMedia(req, res, req.params.mediaId);
+        if (!media) return;
+
+        const format = String(req.query.format || 'srt').toLowerCase();
+        const allowed = ['srt', 'vtt', 'txt'];
+        if (!allowed.includes(format)) {
+            return res.status(400).json({ msg: `Invalid format. Use one of: ${allowed.join(', ')}` });
+        }
+
+        const { transcript, jsonData } = await loadTranscriptJsonForMedia(req.params.mediaId);
+        if (!transcript || !jsonData) {
             return res.status(404).json({ msg: 'Transcript not found' });
         }
 
-        // Fetch the JSON from MinIO
-        const getCommand = new GetObjectCommand({
-            Bucket: transcript.jsonFile.bucket,
-            Key: transcript.jsonFile.key,
-        });
+        const segments = jsonData.segments || [];
+        const base = `transcript_${req.params.mediaId}`;
 
-        const response = await s3Client.send(getCommand);
-        const jsonString = await streamToString(response.Body);
-        const jsonData = JSON.parse(jsonString);
-        const segments = jsonData.segments;
+        if (format === 'srt') {
+            const srtContent = segmentsToSrt(segments);
+            res.setHeader('Content-Type', 'text/srt; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename="${base}.srt"`);
+            return res.send(srtContent);
+        }
 
-        // Build the SRT string
-        let srtContent = '';
-        segments.forEach((segment, index) => {
-            srtContent += `${index + 1}\n`;
-            srtContent += `${formatSrtTime(segment.start)} --> ${formatSrtTime(segment.end)}\n`;
-            srtContent += `${segment.text.trim()}\n\n`;
-        });
+        if (format === 'vtt') {
+            const vtt = segmentsToVtt(segments);
+            res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename="${base}.vtt"`);
+            return res.send(vtt);
+        }
 
-        // Send as a downloadable file
-        res.setHeader('Content-Type', 'text/srt; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="transcript_${req.params.mediaId}.srt"`);
-        res.send(srtContent);
+        const txt = segmentsToTxt(segments);
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${base}.txt"`);
+        return res.send(txt);
     } catch (error) {
-        console.error("Error generating SRT:", error);
+        console.error('Error generating download:', error);
         res.status(500).send('Server error');
     }
 };
@@ -128,5 +145,5 @@ const downloadSrt = async (req, res) => {
 module.exports = {
     getTranscriptContent,
     updateTranscript,
-    downloadSrt
+    downloadExport,
 };

@@ -62,6 +62,8 @@ export default function AdminMediaDetail() {
     const [error, setError] = useState('');
     const [restoring, setRestoring] = useState(false);
     const [restoreSuccess, setRestoreSuccess] = useState(false);
+    const [retrying, setRetrying] = useState(false);
+    const [retrySuccess, setRetrySuccess] = useState(false);
 
     useEffect(() => {
         apiClient
@@ -85,6 +87,21 @@ export default function AdminMediaDetail() {
             setError(err.response?.data?.msg || 'Restore failed');
         } finally {
             setRestoring(false);
+        }
+    };
+
+    const handleRetryJob = async () => {
+        setRetrying(true);
+        setError('');
+        try {
+            const res = await apiClient.post(`/admin/media/${id}/retry-job`);
+            setMedia(res.data.media);
+            setRetrySuccess(true);
+            setTimeout(() => setRetrySuccess(false), 4000);
+        } catch (err) {
+            setError(err.response?.data?.msg || 'Requeue failed');
+        } finally {
+            setRetrying(false);
         }
     };
 
@@ -152,7 +169,18 @@ export default function AdminMediaDetail() {
                         </span>
                     )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
+                    {!isDeleted && (media.status === 'FAILED' || media.status === 'UPLOADED') && (
+                        <button
+                            type="button"
+                            onClick={handleRetryJob}
+                            disabled={retrying}
+                            className="flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            title="Requeue processing (FAILED or stuck UPLOADED)"
+                        >
+                            {retrying ? 'Requeuing…' : 'Requeue job'}
+                        </button>
+                    )}
                     {isDeleted && (
                         <button
                             type="button"
@@ -199,6 +227,12 @@ export default function AdminMediaDetail() {
                 </div>
             )}
 
+            {retrySuccess && (
+                <div className="animate-fade-in rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+                    Job requeued — media is queued for processing again.
+                </div>
+            )}
+
             {/* Content grid */}
             <div className="grid gap-4 lg:grid-cols-2">
                 {/* Media info */}
@@ -240,6 +274,7 @@ export default function AdminMediaDetail() {
                 {/* Language & processing */}
                 <Card title="Processing">
                     <div className="divide-y divide-slate-100">
+                        <InfoRow label="Target lang">{media.targetLanguageCode || '—'}</InfoRow>
                         <InfoRow label="Language mode">{media.sourceLanguageMode || '—'}</InfoRow>
                         <InfoRow label="Source lang">{media.sourceLanguageCode || 'auto-detect'}</InfoRow>
                         <InfoRow label="Detected lang">{media.detectedLanguage || '—'}</InfoRow>

@@ -6,6 +6,7 @@ const Media = require('../models/Media');
 const { sendToQueue } = require('../config/rabbitmq');
 const languages = require('../../shared/languages.json');
 const Transcript = require('../models/Transcript');
+const Summary = require('../models/Summary');
 const mongoose = require('mongoose');
 
 // @route  POST /api/media/presigned-url
@@ -73,6 +74,7 @@ const finalizeUpload = async (req, res) => {
             status: 'UPLOADED',
             sourceLanguageMode: mode,
             sourceLanguageCode: sourceLanguageCode || null,
+            targetLanguageCode,
             storage: {
                 bucket: process.env.STORAGE_BUCKET_NAME,
                 key: fileKey,
@@ -104,23 +106,52 @@ const finalizeUpload = async (req, res) => {
 };
 
 // @route  GET /api/media
-// @desc   Get all media uploads for the logged-in user
+// @desc   Get all media uploads for the logged-in user (search, status filter, pagination)
 // @access Private
 const getUserMedia = async (req, res) => {
     try {
-        const mediaList = await Media.find({
+        const {
+            q,
+            status,
+            page = '1',
+            limit = '20',
+        } = req.query;
+
+        const query = {
             mediaUploadedBy: req.user.id,
             $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
-        })
-            .sort({ createdAt: -1 })
-            .select('-storage');
-        
+        };
+
+        if (q && String(q).trim()) {
+            query.filename = { $regex: String(q).trim(), $options: 'i' };
+        }
+
+        if (status && status !== 'all') {
+            query.status = status;
+        }
+
+        const pageNum = Math.max(1, parseInt(page, 10) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+        const skip = (pageNum - 1) * limitNum;
+
+        const [mediaList, total] = await Promise.all([
+            Media.find(query)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limitNum)
+                .select('-storage'),
+            Media.countDocuments(query),
+        ]);
+
         res.status(200).json({
-            msg: "Media list fetched successfully",
-            media: mediaList
+            msg: 'Media list fetched successfully',
+            media: mediaList,
+            total,
+            page: pageNum,
+            limit: limitNum,
         });
     } catch (error) {
-        console.error("Error fetching user media:", error);
+        console.error('Error fetching user media:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
@@ -144,11 +175,13 @@ const getMediaById = async (req, res) => {
         }
 
         const transcript = await Transcript.findOne({ mediaId: media._id });
+        const summary = await Summary.findOne({ mediaId: media._id });
 
         res.status(200).json({
             msg: "Media details fetched successfully",
             media,
-            transcript
+            transcript,
+            summary: summary || null,
         });
 
     } catch (error) {

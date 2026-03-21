@@ -1,7 +1,8 @@
 const express = require('express');
 const routes = express.Router();
 const { auth } = require('../middleware/auth');
-const { getUploadUrl, 
+const { uploadLimiter } = require('../middleware/rateLimits');
+const { getUploadUrl,
         finalizeUpload,
         getUserMedia,
         getMediaById,
@@ -11,12 +12,12 @@ const { getUploadUrl,
 // @route POST /api/media/presigned-url
 // @desc Get a presigned URL for uploading media
 // @access Private
-routes.post('/presigned-url', auth, getUploadUrl);
+routes.post('/presigned-url', auth, uploadLimiter, getUploadUrl);
 
 // @route POST /api/media/finalize
 // @desc Save media record to DB after successful S3 upload
 // @access Private
-routes.post('/finalize', auth, finalizeUpload);
+routes.post('/finalize', auth, uploadLimiter, finalizeUpload);
 
 // @route GET /api/media
 // @desc Get all media uploads for the logged-in user

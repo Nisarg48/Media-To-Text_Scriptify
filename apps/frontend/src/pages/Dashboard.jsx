@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import apiClient from '../api/client';
 
@@ -15,11 +15,22 @@ const MEDIA_TYPE_LABELS = {
   AUDIO: { label: 'Audio', className: 'bg-violet-100 text-violet-800' },
 };
 
-const FILTER_OPTIONS = [
+const TYPE_FILTER_OPTIONS = [
   { value: 'all', label: 'All' },
   { value: 'VIDEO', label: 'Video' },
   { value: 'AUDIO', label: 'Audio' },
 ];
+
+const STATUS_FILTER_OPTIONS = [
+  { value: 'all', label: 'All statuses' },
+  { value: 'UPLOADING', label: 'Uploading' },
+  { value: 'UPLOADED', label: 'Queued' },
+  { value: 'PROCESSING', label: 'Processing' },
+  { value: 'COMPLETED', label: 'Done' },
+  { value: 'FAILED', label: 'Failed' },
+];
+
+const PAGE_SIZE = 12;
 
 function formatDate(dateStr) {
   const d = new Date(dateStr);
@@ -28,32 +39,57 @@ function formatDate(dateStr) {
 
 export default function Dashboard() {
   const [media, setMedia] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const [searchDebounced, setSearchDebounced] = useState('');
 
   useEffect(() => {
-    let cancelled = false;
-    apiClient
-      .get('/media')
-      .then((res) => {
-        if (!cancelled) setMedia(res.data.media || []);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err.response?.data?.message || 'Failed to load media.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+    const t = setTimeout(() => setSearchDebounced(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const fetchMedia = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const { data } = await apiClient.get('/media', {
+        params: {
+          q: searchDebounced || undefined,
+          status: statusFilter === 'all' ? undefined : statusFilter,
+          page,
+          limit: PAGE_SIZE,
+        },
       });
-    return () => { cancelled = true; };
-  }, []);
+      setMedia(data.media || []);
+      setTotal(typeof data.total === 'number' ? data.total : (data.media || []).length);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to load media.');
+    } finally {
+      setLoading(false);
+    }
+  }, [page, searchDebounced, statusFilter]);
+
+  useEffect(() => {
+    fetchMedia();
+  }, [fetchMedia]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchDebounced, statusFilter]);
 
   const filteredMedia = useMemo(() => {
     if (typeFilter === 'all') return media;
     return media.filter((m) => m.mediaType === typeFilter);
   }, [media, typeFilter]);
 
-  if (loading) {
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  if (loading && media.length === 0 && !error) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
         <p className="text-slate-500">Loading…</p>
@@ -69,7 +105,7 @@ export default function Dashboard() {
     );
   }
 
-  if (media.length === 0) {
+  if (media.length === 0 && total === 0 && !searchDebounced && statusFilter === 'all') {
     return (
       <div className="animate-fade-in">
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-lg sm:p-12">
@@ -88,69 +124,137 @@ export default function Dashboard() {
 
   return (
     <div className="animate-fade-in pb-8 pt-1">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold text-slate-800">Your media</h1>
-        <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-1 shadow-sm" role="group" aria-label="Filter by type">
-          {FILTER_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => setTypeFilter(opt.value)}
-              className={`rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 ${
-                typeFilter === opt.value
-                  ? 'bg-white text-emerald-700 shadow-md'
-                  : 'bg-transparent text-slate-600 hover:bg-white/80 hover:text-slate-800'
-              }`}
+      <div className="mb-6 flex flex-col gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <h1 className="text-2xl font-bold text-slate-800">Your media</h1>
+          <div className="flex flex-wrap gap-2">
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by filename…"
+              className="min-w-[200px] flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-800 shadow-sm outline-none ring-emerald-500/20 transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 sm:max-w-xs"
+              aria-label="Search media by filename"
+            />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20"
+              aria-label="Filter by status"
             >
-              {opt.label}
-            </button>
-          ))}
+              {STATUS_FILTER_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-1 shadow-sm" role="group" aria-label="Filter by type">
+            {TYPE_FILTER_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setTypeFilter(opt.value)}
+                className={`rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 ${
+                  typeFilter === opt.value
+                    ? 'bg-white text-emerald-700 shadow-md'
+                    : 'bg-transparent text-slate-600 hover:bg-white/80 hover:text-slate-800'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {total > 0 && (
+            <p className="text-sm text-slate-500">
+              {total} item{total !== 1 ? 's' : ''}
+              {totalPages > 1 && ` · Page ${page} of ${totalPages}`}
+            </p>
+          )}
         </div>
       </div>
 
       {filteredMedia.length === 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
           <p className="text-slate-600">
-            No {typeFilter === 'VIDEO' ? 'video' : 'audio'} yet.
-            {typeFilter !== 'all' && (
+            No media matches your filters.
+            {(searchDebounced || statusFilter !== 'all' || typeFilter !== 'all') && (
               <button
                 type="button"
-                onClick={() => setTypeFilter('all')}
+                onClick={() => {
+                  setSearch('');
+                  setStatusFilter('all');
+                  setTypeFilter('all');
+                }}
                 className="ml-1 font-medium text-emerald-600 hover:underline"
               >
-                Show all
+                Clear filters
               </button>
             )}
           </p>
         </div>
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredMedia.map((item, i) => {
-            const statusInfo = STATUS_CONFIG[item.status] || { label: item.status, className: 'bg-slate-200 text-slate-700' };
-            const typeInfo = MEDIA_TYPE_LABELS[item.mediaType] || { label: item.mediaType, className: 'bg-slate-200 text-slate-700' };
-            return (
-              <li key={item._id} className="animate-fade-in-up" style={{ animationDelay: `${i * 0.05}s`, animationFillMode: 'backwards' }}>
-                <Link
-                  to={`/media/${item._id}`}
-                  className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:border-emerald-200 hover:shadow-md hover:scale-[1.01]"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="min-w-0 flex-1 truncate font-medium text-slate-800" title={item.filename}>
-                      {item.filename}
-                    </p>
-                    <span className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ${typeInfo.className}`}>
-                      {typeInfo.label}
+        <>
+          {loading && media.length > 0 && (
+            <p className="mb-2 text-center text-xs text-slate-400" aria-live="polite">
+              Updating…
+            </p>
+          )}
+          <ul className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-3 ${loading && media.length > 0 ? 'opacity-70' : ''}`}>
+            {filteredMedia.map((item, i) => {
+              const statusInfo = STATUS_CONFIG[item.status] || { label: item.status, className: 'bg-slate-200 text-slate-700' };
+              const typeInfo = MEDIA_TYPE_LABELS[item.mediaType] || { label: item.mediaType, className: 'bg-slate-200 text-slate-700' };
+              return (
+                <li key={item._id} className="animate-fade-in-up" style={{ animationDelay: `${i * 0.05}s`, animationFillMode: 'backwards' }}>
+                  <Link
+                    to={`/media/${item._id}`}
+                    className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:border-emerald-200 hover:shadow-md hover:scale-[1.01]"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="min-w-0 flex-1 truncate font-medium text-slate-800" title={item.filename}>
+                        {item.filename}
+                      </p>
+                      <span className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ${typeInfo.className}`}>
+                        {typeInfo.label}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">{formatDate(item.createdAt)}</p>
+                    <span className={`mt-2 inline-block rounded-md px-2 py-0.5 text-xs font-medium ${statusInfo.className}`}>
+                      {statusInfo.label}
                     </span>
-                  </div>
-                  <p className="mt-1 text-xs text-slate-500">{formatDate(item.createdAt)}</p>
-                  <span className={`mt-2 inline-block rounded-md px-2 py-0.5 text-xs font-medium ${statusInfo.className}`}>
-                    {statusInfo.label}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+
+          {totalPages > 1 && (
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+              <button
+                type="button"
+                disabled={page <= 1 || loading}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span className="px-2 text-sm text-slate-600">
+                Page {page} / {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={page >= totalPages || loading}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

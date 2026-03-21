@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test \"test/**/*.test.js\"",
     "start": "node index.js",
     "start:dev": "nodemon index.js",
     "lint": "eslint ."
@@ -16,21 +16,26 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.985.0",
     "@aws-sdk/s3-request-presigner": "^3.985.0",
+    "@google/generative-ai": "^0.21.0",
     "amqplib": "^0.10.9",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
+    "express-rate-limit": "^7.5.0",
     "express-validator": "^7.3.1",
     "jsonwebtoken": "^9.0.3",
+    "marked": "^17.0.5",
     "mongodb": "^7.1.0",
     "mongoose": "^9.1.5",
     "morgan": "^1.10.1",
+    "pdfkit": "^0.17.2",
     "uuid": "^13.0.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "eslint": "^9.39.4",
-    "nodemon": "^3.1.11"
+    "nodemon": "^3.1.11",
+    "supertest": "^7.1.4"
   }
 }

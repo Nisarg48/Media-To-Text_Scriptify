@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Media = require('../models/Media');
 const User = require('../models/User');
 const Transcript = require('../models/Transcript');
+const { sendToQueue } = require('../config/rabbitmq');
 
 // @route  GET /api/admin/stats
 // @desc   Overview statistics for the admin dashboard
@@ -203,6 +204,55 @@ const restoreMedia = async (req, res) => {
     }
 };
 
+// @route  POST /api/admin/media/:id/retry-job
+// @desc   Requeue processing for FAILED or stuck UPLOADED (requires targetLanguageCode on media)
+// @access Admin
+const retryFailedJob = async (req, res) => {
+    try {
+        const media = await Media.findById(req.params.id);
+        if (!media) return res.status(404).json({ msg: 'Media not found' });
+        if (media.deletedAt) return res.status(400).json({ msg: 'Cannot retry deleted media' });
+
+        if (!['FAILED', 'UPLOADED'].includes(media.status)) {
+            return res.status(400).json({
+                msg: 'Only FAILED or UPLOADED (queued) media can be requeued',
+            });
+        }
+
+        if (!media.storage?.key) {
+            return res.status(400).json({ msg: 'Media has no storage key' });
+        }
+
+        if (!media.targetLanguageCode) {
+            return res.status(400).json({
+                msg: 'Media is missing targetLanguageCode; cannot requeue (re-upload may be required)',
+            });
+        }
+
+        const taskPayload = {
+            mediaId: media._id,
+            userId: media.mediaUploadedBy,
+            fileKey: media.storage.key,
+            targetLanguageCode: media.targetLanguageCode,
+            sourceLanguageCode:
+                media.sourceLanguageMode === 'FORCED' && media.sourceLanguageCode
+                    ? media.sourceLanguageCode
+                    : undefined,
+        };
+
+        media.status = 'UPLOADED';
+        media.errorDetails = undefined;
+        await media.save();
+
+        await sendToQueue(taskPayload);
+
+        return res.json({ msg: 'Job requeued', media });
+    } catch (err) {
+        console.error('adminController.retryFailedJob:', err.message);
+        return res.status(500).json({ msg: 'Server error' });
+    }
+};
+
 module.exports = {
     getStats,
     getAllMedia,
@@ -210,4 +260,5 @@ module.exports = {
     getAllUsers,
     getJobs,
     restoreMedia,
+    retryFailedJob,
 };

@@ -14,6 +14,9 @@ const mediaSchema = new mongoose.Schema(
     sourceLanguageMode: { type: String, enum: ['AUTO', 'FORCED'], default: 'AUTO' },
     sourceLanguageCode: { type: String },
 
+    /** Persisted for admin requeue / audit (same value sent to the worker at finalize). */
+    targetLanguageCode: { type: String },
+
     status: { type: String, enum: ['UPLOADING', 'UPLOADED', 'PROCESSING', 'COMPLETED', 'FAILED'], default: 'UPLOADING', index: true },
     
     storage: { type: StorageSchema, required: true },

@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import apiClient from '../api/client';
 import { getFriendlyErrorMessage } from '../utils/friendlyError';
 import ProcessingTimeline from '../components/ProcessingTimeline';
@@ -59,6 +61,12 @@ export default function MediaDetail() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [showTechnicalError, setShowTechnicalError] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [summary, setSummary] = useState(null);
+  const [summaryGenLoading, setSummaryGenLoading] = useState(false);
+  const [notesSaving, setNotesSaving] = useState(false);
+  const [notesDraft, setNotesDraft] = useState('');
+  const [summaryCopyFlash, setSummaryCopyFlash] = useState(false);
+  const [summaryPdfLoading, setSummaryPdfLoading] = useState(false);
 
   const loadMedia = useCallback(async () => {
     if (!id) return;
@@ -66,6 +74,7 @@ export default function MediaDetail() {
       const { data } = await apiClient.get(`/media/${id}`);
       setMedia(data.media);
       setTranscript(data.transcript || null);
+      setSummary(data.summary ?? null);
     } catch (err) {
       setError(err.response?.data?.msg || err.response?.data?.message || 'Failed to load media.');
     } finally {
@@ -95,6 +104,11 @@ export default function MediaDetail() {
       })
       .catch(() => setContent(null));
   }, [media, transcript, id]);
+
+  useEffect(() => {
+    if (summary?.userText != null) setNotesDraft(summary.userText);
+    else setNotesDraft('');
+  }, [summary?._id, summary?.userText]);
 
   // Only fetch playback URL when processing is COMPLETED (avoids video reload during processing)
   useEffect(() => {
@@ -169,19 +183,106 @@ export default function MediaDetail() {
     }
   }, [content?.segments]);
 
-  const handleDownloadSrt = async () => {
+  const triggerBlobDownload = (blob, filename) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadExport = async (format) => {
     if (!id) return;
     setError('');
     try {
-      const res = await apiClient.get(`/transcripts/${id}/download`, { responseType: 'blob' });
-      const url = URL.createObjectURL(res.data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `transcript_${id}.srt`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const res = await apiClient.get(`/transcripts/${id}/download`, {
+        params: { format },
+        responseType: 'blob',
+      });
+      triggerBlobDownload(res.data, `transcript_${id}.${format}`);
     } catch (err) {
-      setError(err.response?.data?.msg || 'Failed to download SRT.');
+      setError(err.response?.data?.msg || `Failed to download ${format.toUpperCase()}.`);
+    }
+  };
+
+  const handleGenerateSummary = async () => {
+    if (!id) return;
+    setError('');
+    setSummaryGenLoading(true);
+    try {
+      const { data } = await apiClient.post(`/summaries/${id}/generate`, {});
+      setSummary(data.summary);
+    } catch (err) {
+      setError(err.response?.data?.msg || 'Failed to generate summary.');
+    } finally {
+      setSummaryGenLoading(false);
+    }
+  };
+
+  const handleCopySummary = async () => {
+    if (!summary?.text) return;
+    setError('');
+    try {
+      await navigator.clipboard.writeText(summary.text);
+      setSummaryCopyFlash(true);
+      setTimeout(() => setSummaryCopyFlash(false), 2000);
+    } catch {
+      setError('Could not copy to clipboard.');
+    }
+  };
+
+  const summaryPdfLocalName = (mediaFilename) => {
+    const name = String(mediaFilename || 'media');
+    const stem = name.replace(/\.[^.]+$/, '') || 'media';
+    const safe = stem.replace(/[^\w\s.-]+/g, '_').replace(/\s+/g, '_').slice(0, 100);
+    return `summary_${safe}.pdf`;
+  };
+
+  const handleDownloadSummaryPdf = async () => {
+    if (!id) return;
+    setError('');
+    setSummaryPdfLoading(true);
+    try {
+      const res = await apiClient.get(`/summaries/${id}/download/pdf`, { responseType: 'blob' });
+      const ct = (res.headers['content-type'] || '').toLowerCase();
+      if (ct.includes('application/json')) {
+        const text = await res.data.text();
+        const j = JSON.parse(text);
+        setError(j.msg || 'Failed to download summary PDF.');
+        return;
+      }
+      triggerBlobDownload(res.data, summaryPdfLocalName(media?.filename));
+    } catch (err) {
+      let msg = 'Failed to download summary PDF.';
+      const data = err.response?.data;
+      if (data instanceof Blob) {
+        try {
+          const t = await data.text();
+          const j = JSON.parse(t);
+          if (j.msg) msg = j.msg;
+        } catch {
+          /* ignore */
+        }
+      } else if (typeof err.response?.data?.msg === 'string') {
+        msg = err.response.data.msg;
+      }
+      setError(msg);
+    } finally {
+      setSummaryPdfLoading(false);
+    }
+  };
+
+  const handleSaveNotes = async () => {
+    if (!id || !summary?._id) return;
+    setNotesSaving(true);
+    try {
+      const { data } = await apiClient.put(`/summaries/${id}`, { userText: notesDraft });
+      setSummary(data.summary);
+    } catch (err) {
+      setError(err.response?.data?.msg || 'Failed to save notes.');
+    } finally {
+      setNotesSaving(false);
     }
   };
 
@@ -366,15 +467,124 @@ export default function MediaDetail() {
               )}
             </div>
             <div className="shrink-0 border-t border-slate-200 bg-slate-50/50 p-3">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Export</p>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { format: 'srt', label: 'SRT' },
+                  { format: 'vtt', label: 'WebVTT' },
+                  { format: 'txt', label: 'Plain text' },
+                ].map(({ format, label }) => (
+                  <button
+                    key={format}
+                    type="button"
+                    onClick={() => handleDownloadExport(format)}
+                    className="rounded-lg border border-emerald-500/80 bg-white px-2 py-2 text-xs font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50 active:scale-[0.98]"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {canShowPlayer && transcript && (
+        <div className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-800">AI summary</h2>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Generated from your transcript as Markdown (headings, lists, bold). Copy keeps the same structure for pasting elsewhere.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {summary?.text && (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleCopySummary}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                  >
+                    {summaryCopyFlash ? 'Copied!' : 'Copy Markdown'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownloadSummaryPdf}
+                    disabled={summaryPdfLoading}
+                    className="rounded-lg border border-emerald-500/80 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-100 disabled:opacity-50"
+                  >
+                    {summaryPdfLoading ? 'PDF…' : 'Download PDF'}
+                  </button>
+                </>
+              )}
               <button
                 type="button"
-                onClick={handleDownloadSrt}
-                className="w-full rounded-lg border-2 border-emerald-500 bg-emerald-500 px-3 py-2.5 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:bg-emerald-600 hover:border-emerald-600 hover:shadow-lg active:scale-[0.98]"
+                onClick={handleGenerateSummary}
+                disabled={summaryGenLoading}
+                className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white shadow transition hover:bg-emerald-600 disabled:opacity-50"
               >
-                Download SRT
+                {summaryGenLoading ? 'Generating…' : summary?.text ? 'Regenerate' : 'Generate summary'}
               </button>
             </div>
           </div>
+          {summary?.text ? (
+            <div className="summary-md rounded-lg border border-slate-100 bg-slate-50/50 p-4 text-sm leading-relaxed text-slate-800 [&_h1]:mb-2 [&_h1]:mt-3 [&_h1]:text-lg [&_h1]:font-bold [&_h1]:text-slate-900 [&_h1]:first:mt-0 [&_h2]:mb-2 [&_h2]:mt-3 [&_h2]:text-base [&_h2]:font-bold [&_h2]:text-slate-900 [&_h3]:mb-1 [&_h3]:mt-2 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-slate-900 [&_li]:my-1 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-2 [&_p]:text-slate-700 [&_strong]:font-semibold [&_strong]:text-slate-900 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_blockquote]:border-l-4 [&_blockquote]:border-slate-300 [&_blockquote]:pl-3 [&_blockquote]:italic">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  code({ className, children, ...props }) {
+                    const match = /language-(\w+)/.exec(className || '');
+                    const isBlock = match || String(children).includes('\n');
+                    if (!isBlock && !className) {
+                      return (
+                        <code className="rounded bg-slate-200/80 px-1 py-0.5 font-mono text-xs text-slate-800" {...props}>
+                          {children}
+                        </code>
+                      );
+                    }
+                    return (
+                      <pre className="my-2 overflow-x-auto rounded-lg bg-slate-900/90 p-3 font-mono text-xs text-slate-100">
+                        <code className={className} {...props}>
+                          {children}
+                        </code>
+                      </pre>
+                    );
+                  },
+                }}
+              >
+                {summary.text}
+              </ReactMarkdown>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">No summary yet. Generate one from your transcript (uses the configured AI provider).</p>
+          )}
+          {summary?._id && (
+            <div className="mt-4 border-t border-slate-100 pt-4">
+              <label htmlFor="summary-notes" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Your notes
+              </label>
+              <textarea
+                id="summary-notes"
+                value={notesDraft}
+                onChange={(e) => setNotesDraft(e.target.value)}
+                onBlur={handleSaveNotes}
+                rows={3}
+                className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none ring-emerald-500/20 focus:border-emerald-400 focus:ring-2"
+                placeholder="Private notes (saved automatically on blur)…"
+              />
+              <div className="mt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleSaveNotes}
+                  disabled={notesSaving}
+                  className="text-xs font-medium text-emerald-600 hover:underline disabled:opacity-50"
+                >
+                  {notesSaving ? 'Saving…' : 'Save notes'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
