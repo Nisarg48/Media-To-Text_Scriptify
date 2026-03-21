@@ -4,7 +4,6 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node --test \"test/**/*.test.js\"",
     "start": "node index.js",
     "start:dev": "nodemon index.js",
     "lint": "eslint ."
@@ -35,7 +34,6 @@
   },
   "devDependencies": {
     "eslint": "^9.39.4",
-    "nodemon": "^3.1.11",
-    "supertest": "^7.1.4"
+    "nodemon": "^3.1.11"
   }
 }

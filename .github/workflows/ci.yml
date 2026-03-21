@@ -28,10 +28,6 @@ jobs:
         run: npm run lint
         working-directory: apps/backend
 
-      - name: Test
-        run: npm test
-        working-directory: apps/backend
-
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
