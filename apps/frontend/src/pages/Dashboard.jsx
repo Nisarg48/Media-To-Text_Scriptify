@@ -37,6 +37,56 @@ function formatDate(dateStr) {
   return d.toLocaleDateString(undefined, { dateStyle: 'short' }) + ' ' + d.toLocaleTimeString(undefined, { timeStyle: 'short' });
 }
 
+function formatBytes(bytes) {
+  if (!bytes || bytes === 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
+}
+
+function StatCard({ label, value, sub, accent }) {
+  const accentMap = {
+    green: 'border-l-emerald-400 bg-emerald-50',
+    amber: 'border-l-amber-400 bg-amber-50',
+    red: 'border-l-red-400 bg-red-50',
+    slate: 'border-l-slate-300 bg-slate-50',
+    blue: 'border-l-blue-400 bg-blue-50',
+  };
+  return (
+    <div className={`rounded-xl border border-slate-200 border-l-4 bg-white p-4 shadow-sm ${accentMap[accent] ?? accentMap.slate}`}>
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 text-2xl font-bold text-slate-800">{value}</p>
+      {sub && <p className="mt-0.5 text-xs text-slate-500">{sub}</p>}
+    </div>
+  );
+}
+
+function UsageStats({ stats, loading }) {
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5 mb-6">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="h-20 animate-pulse rounded-xl bg-slate-100" />
+        ))}
+      </div>
+    );
+  }
+  if (!stats) return null;
+
+  const { totalFiles, byStatus, storageBytesUsed, processingMinutes } = stats;
+  const inFlight = (byStatus?.PROCESSING ?? 0) + (byStatus?.UPLOADED ?? 0);
+
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5 mb-6">
+      <StatCard label="Total files" value={totalFiles} accent="slate" />
+      <StatCard label="Completed" value={byStatus?.COMPLETED ?? 0} accent="green" />
+      <StatCard label="In progress" value={inFlight} sub={inFlight > 0 ? 'Processing or queued' : undefined} accent="amber" />
+      <StatCard label="Failed" value={byStatus?.FAILED ?? 0} accent="red" />
+      <StatCard label="Storage used" value={formatBytes(storageBytesUsed)} sub={processingMinutes > 0 ? `${processingMinutes} min transcribed` : undefined} accent="blue" />
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [media, setMedia] = useState([]);
   const [total, setTotal] = useState(0);
@@ -47,6 +97,15 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [searchDebounced, setSearchDebounced] = useState('');
+  const [stats, setStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  useEffect(() => {
+    apiClient.get('/analytics/me')
+      .then(({ data }) => setStats(data))
+      .catch(() => {})
+      .finally(() => setStatsLoading(false));
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search.trim()), 300);
@@ -91,8 +150,11 @@ export default function Dashboard() {
 
   if (loading && media.length === 0 && !error) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <p className="text-slate-500">Loading…</p>
+      <div className="animate-fade-in pb-8 pt-1">
+        <UsageStats stats={stats} loading={statsLoading} />
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <p className="text-slate-500">Loading…</p>
+        </div>
       </div>
     );
   }
@@ -108,6 +170,7 @@ export default function Dashboard() {
   if (media.length === 0 && total === 0 && !searchDebounced && statusFilter === 'all') {
     return (
       <div className="animate-fade-in">
+        <UsageStats stats={stats} loading={statsLoading} />
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-lg sm:p-12">
           <h2 className="text-xl font-semibold text-slate-800 sm:text-2xl">No media yet</h2>
           <p className="mt-2 text-slate-600">Upload your first audio or video to get a transcript.</p>
@@ -124,6 +187,8 @@ export default function Dashboard() {
 
   return (
     <div className="animate-fade-in pb-8 pt-1">
+      <UsageStats stats={stats} loading={statsLoading} />
+
       <div className="mb-6 flex flex-col gap-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <h1 className="text-2xl font-bold text-slate-800">Your media</h1>

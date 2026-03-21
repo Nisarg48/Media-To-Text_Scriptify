@@ -7,6 +7,7 @@ const mediaRoutes = require('./routes/mediaRoutes');
 const transcriptRoutes = require('./routes/transcriptRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const summaryRoutes = require('./routes/summaryRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
 const { getHealth } = require('./controllers/healthController');
 const { authLimiter, apiLimiter } = require('./middleware/rateLimits');
 
@@ -26,6 +27,7 @@ function createApp() {
 
     app.use('/api/transcripts', transcriptRoutes);
     app.use('/api/summaries', summaryRoutes);
+    app.use('/api/analytics', analyticsRoutes);
     app.use('/api/admin', adminRoutes);
 
     return app;
