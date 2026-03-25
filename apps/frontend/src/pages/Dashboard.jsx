@@ -64,25 +64,65 @@ function StatCard({ label, value, sub, accent }) {
 function UsageStats({ stats, loading }) {
   if (loading) {
     return (
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5 mb-6">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-20 animate-pulse rounded-xl bg-slate-100" />
-        ))}
+      <div className="mb-6 space-y-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-20 animate-pulse rounded-xl bg-slate-100" />
+          ))}
+        </div>
+        <div className="h-16 animate-pulse rounded-xl bg-slate-100" />
       </div>
     );
   }
   if (!stats) return null;
 
-  const { totalFiles, byStatus, storageBytesUsed, processingMinutes } = stats;
+  const { totalFiles, byStatus, storageBytesUsed, processingMinutes, subscription } = stats;
   const inFlight = (byStatus?.PROCESSING ?? 0) + (byStatus?.UPLOADED ?? 0);
 
+  const minutesUsed = subscription?.minutesUsed ?? 0;
+  const minutesLimit = subscription?.minutesLimit ?? 30;
+  const pct = minutesLimit > 0 ? Math.min(100, Math.round((minutesUsed / minutesLimit) * 100)) : 0;
+  const danger = pct >= 90;
+  const warn = pct >= 70;
+  const isPro = subscription?.plan === 'pro';
+
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5 mb-6">
-      <StatCard label="Total files" value={totalFiles} accent="slate" />
-      <StatCard label="Completed" value={byStatus?.COMPLETED ?? 0} accent="green" />
-      <StatCard label="In progress" value={inFlight} sub={inFlight > 0 ? 'Processing or queued' : undefined} accent="amber" />
-      <StatCard label="Failed" value={byStatus?.FAILED ?? 0} accent="red" />
-      <StatCard label="Storage used" value={formatBytes(storageBytesUsed)} sub={processingMinutes > 0 ? `${processingMinutes} min transcribed` : undefined} accent="blue" />
+    <div className="mb-6 space-y-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
+        <StatCard label="Total files" value={totalFiles} accent="slate" />
+        <StatCard label="Completed" value={byStatus?.COMPLETED ?? 0} accent="green" />
+        <StatCard label="In progress" value={inFlight} sub={inFlight > 0 ? 'Processing or queued' : undefined} accent="amber" />
+        <StatCard label="Failed" value={byStatus?.FAILED ?? 0} accent="red" />
+        <StatCard label="Storage used" value={formatBytes(storageBytesUsed)} sub={processingMinutes > 0 ? `${processingMinutes} min transcribed` : undefined} accent="blue" />
+      </div>
+
+      {/* Quota bar */}
+      <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+        <div className="flex-1 min-w-0">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+              <span>Transcription quota</span>
+              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${isPro ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                {isPro ? 'Pro' : 'Free'}
+              </span>
+            </div>
+            <span className={`text-xs font-semibold tabular-nums ${danger ? 'text-red-600' : warn ? 'text-amber-600' : 'text-slate-600'}`}>
+              {minutesUsed} / {minutesLimit} min
+            </span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${danger ? 'bg-red-500' : warn ? 'bg-amber-400' : 'bg-emerald-500'}`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
+        {!isPro && (
+          <a href="/dashboard/billing" className="shrink-0 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white shadow transition hover:bg-emerald-600">
+            Upgrade
+          </a>
+        )}
+      </div>
     </div>
   );
 }

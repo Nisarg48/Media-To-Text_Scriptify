@@ -45,6 +45,15 @@ const NAV_ITEMS = [
             </svg>
         ),
     },
+    {
+        to: '/admin/subscriptions',
+        label: 'Subscriptions',
+        icon: (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+            </svg>
+        ),
+    },
 ];
 
 function Sidebar({ onClose }) {

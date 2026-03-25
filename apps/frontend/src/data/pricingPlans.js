@@ -1,0 +1,40 @@
+/** Single source for marketing copy — keep aligned with apps/backend/config/plans.js */
+export const PRICING_PLANS = [
+  {
+    id: 'free',
+    name: 'Free',
+    price: '$0',
+    period: 'forever',
+    description: 'Get started with transcription at no cost.',
+    features: [
+      '30 minutes of transcription / month (counts when a job completes; deleting files does not refund minutes)',
+      'Up to 30 minutes per file',
+      'Files up to 500 MB',
+      '2 parallel jobs',
+      'SRT, WebVTT, TXT export',
+      'AI summaries',
+    ],
+    cta: 'Get started',
+    ctaTo: '/register?plan=free',
+    highlight: false,
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    price: '$9.99',
+    period: 'per month',
+    description: 'For creators and researchers who need more.',
+    features: [
+      '300 minutes of transcription / month (sticky monthly pool)',
+      'Up to 8 hours per file',
+      'Files up to 2 GB',
+      '10 parallel jobs',
+      'SRT, WebVTT, TXT export',
+      'AI summaries',
+      'Priority processing',
+    ],
+    cta: 'Start Pro',
+    ctaTo: '/register?plan=pro',
+    highlight: true,
+  },
+];

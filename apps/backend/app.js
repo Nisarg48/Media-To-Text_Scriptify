@@ -8,6 +8,7 @@ const transcriptRoutes = require('./routes/transcriptRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const summaryRoutes = require('./routes/summaryRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const { getHealth } = require('./controllers/healthController');
 const { authLimiter, apiLimiter } = require('./middleware/rateLimits');
 
@@ -15,6 +16,10 @@ function createApp() {
     const app = express();
 
     app.use(cors());
+
+    // Stripe webhook must receive raw body — register before express.json()
+    app.use('/api/subscriptions', subscriptionRoutes);
+
     app.use(json());
 
     app.get('/api/health', getHealth);

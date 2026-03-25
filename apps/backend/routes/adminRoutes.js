@@ -9,6 +9,8 @@ const {
     getJobs,
     restoreMedia,
     retryFailedJob,
+    getSubscriptionsOverview,
+    getSubscriptionAuditLogs,
 } = require('../controllers/adminController');
 
 // All admin routes require valid JWT + admin role
@@ -25,6 +27,12 @@ router.get('/media/:id', getAdminMediaById);
 
 // GET /api/admin/users
 router.get('/users', getAllUsers);
+
+// GET /api/admin/subscriptions
+router.get('/subscriptions', getSubscriptionsOverview);
+
+// GET /api/admin/subscriptions/audit
+router.get('/subscriptions/audit', getSubscriptionAuditLogs);
 
 // GET /api/admin/jobs
 router.get('/jobs', getJobs);

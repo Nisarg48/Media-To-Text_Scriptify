@@ -8,6 +8,7 @@ const languages = require('../../shared/languages.json');
 const Transcript = require('../models/Transcript');
 const Summary = require('../models/Summary');
 const mongoose = require('mongoose');
+const { resolveSubscription } = require('./subscriptionController');
 
 // @route  POST /api/media/presigned-url
 // @desc   Get a presigned URL for uploading media
@@ -15,10 +16,39 @@ const mongoose = require('mongoose');
 const getUploadUrl = async (req, res) => {
     try {
         const userId = req.user.id;
-        const { fileName, fileType } = req.body;
+        const { fileName, fileType, sizeBytes, durationMs } = req.body;
 
         if(!fileName || !fileType) {
             return res.status(400).json({ message: 'File name and type are required' });
+        }
+
+        const sub = await resolveSubscription(userId);
+
+        // Enforce plan file-size limit
+        if (sizeBytes && typeof sizeBytes === 'number' && sizeBytes > 0) {
+            const limitBytes = sub.maxFileSizeMB * 1024 * 1024;
+            if (sizeBytes > limitBytes) {
+                return res.status(403).json({
+                    message: `Your ${sub.plan === 'free' ? 'Free' : 'Pro'} plan allows files up to ${sub.maxFileSizeMB} MB. This file is ${(sizeBytes / 1024 / 1024).toFixed(1)} MB.`,
+                    code: 'FILE_TOO_LARGE',
+                    plan: sub.plan,
+                    maxFileSizeMB: sub.maxFileSizeMB,
+                });
+            }
+        }
+
+        // Optional client-reported duration (browser metadata). Worker still enforces after ffprobe.
+        if (durationMs != null && typeof durationMs === 'number' && durationMs > 0) {
+            const maxMs = (sub.maxDurationMinutesPerFile || 30) * 60 * 1000;
+            if (durationMs > maxMs) {
+                const dm = (durationMs / 60000).toFixed(1);
+                return res.status(403).json({
+                    message: `This file is about ${dm} minutes long. Your ${sub.plan === 'free' ? 'Free' : 'Pro'} plan allows up to ${sub.maxDurationMinutesPerFile || 30} minutes per file.`,
+                    code: 'FILE_TOO_LONG',
+                    plan: sub.plan,
+                    maxDurationMinutesPerFile: sub.maxDurationMinutesPerFile || 30,
+                });
+            }
         }
 
         const fileKey = `media/${userId}/${uuidv4()}_${fileName}`;
@@ -45,10 +75,11 @@ const getUploadUrl = async (req, res) => {
 const finalizeUpload = async (req, res) => {
     try {
         const {
-            fileName, fileKey, 
-            mediaType, format, 
+            fileName, fileKey,
+            mediaType, format,
             targetLanguageCode,
-            sourceLanguageCode
+            sourceLanguageCode,
+            durationMs,
         } = req.body;
 
         if(!fileName || !fileKey || !mediaType || !format) {
@@ -62,6 +93,46 @@ const finalizeUpload = async (req, res) => {
         const isSupported = languages.some(language => language.code === targetLanguageCode);
         if(!isSupported) {
             return res.status(400).json({ message: `Target language code '${targetLanguageCode}' is not supported` });
+        }
+
+        // Enforce plan limits: minutes quota and parallel job cap
+        const sub = await resolveSubscription(req.user.id);
+
+        if (durationMs != null && typeof durationMs === 'number' && durationMs > 0) {
+            const maxMs = (sub.maxDurationMinutesPerFile || 30) * 60 * 1000;
+            if (durationMs > maxMs) {
+                const dm = (durationMs / 60000).toFixed(1);
+                return res.status(403).json({
+                    message: `This file is about ${dm} minutes long. Your ${sub.plan === 'free' ? 'Free' : 'Pro'} plan allows up to ${sub.maxDurationMinutesPerFile || 30} minutes per file.`,
+                    code: 'FILE_TOO_LONG',
+                    plan: sub.plan,
+                    maxDurationMinutesPerFile: sub.maxDurationMinutesPerFile || 30,
+                });
+            }
+        }
+
+        if (sub.minutesUsed >= sub.minutesLimit) {
+            return res.status(403).json({
+                message: `You have used all ${sub.minutesLimit} minutes on your ${sub.plan === 'free' ? 'Free' : 'Pro'} plan this period. Upgrade or wait for the next billing cycle.`,
+                code: 'QUOTA_EXCEEDED',
+                plan: sub.plan,
+                minutesUsed: sub.minutesUsed,
+                minutesLimit: sub.minutesLimit,
+            });
+        }
+
+        const activeJobs = await Media.countDocuments({
+            mediaUploadedBy: req.user.id,
+            status: { $in: ['UPLOADED', 'PROCESSING'] },
+            $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
+        });
+        if (activeJobs >= sub.maxParallelJobs) {
+            return res.status(403).json({
+                message: `Your ${sub.plan === 'free' ? 'Free' : 'Pro'} plan allows ${sub.maxParallelJobs} parallel job${sub.maxParallelJobs !== 1 ? 's' : ''}. Wait for a current job to finish before submitting another.`,
+                code: 'PARALLEL_JOB_LIMIT',
+                plan: sub.plan,
+                maxParallelJobs: sub.maxParallelJobs,
+            });
         }
 
         const mode = sourceLanguageCode ? 'FORCED' : 'AUTO';
@@ -91,6 +162,7 @@ const finalizeUpload = async (req, res) => {
             fileKey: fileKey,
             targetLanguageCode,
             sourceLanguageCode,
+            maxDurationMinutesPerFile: sub.maxDurationMinutesPerFile || 30,
         };
 
         await sendToQueue(taskPayload);

@@ -1,21 +1,19 @@
 const Media = require('../models/Media');
+const { resolveSubscription } = require('./subscriptionController');
 
 /**
  * GET /api/analytics/me
- * Per-user usage statistics derived from their Media documents.
- * No heavy aggregation — intended to serve the dashboard summary cards.
+ * Per-user usage statistics derived from their Media documents, plus plan/quota info.
  */
 const getMyStats = async (req, res) => {
     try {
         const userId = req.user.id;
 
-        const [statusCounts, storagePipeline, minutesPipeline] = await Promise.all([
-            // Count documents per status
+        const [statusCounts, storagePipeline, minutesPipeline, subscription] = await Promise.all([
             Media.aggregate([
                 { $match: { mediaUploadedBy: require('mongoose').Types.ObjectId.createFromHexString(userId), deletedAt: null } },
                 { $group: { _id: '$status', count: { $sum: 1 } } },
             ]),
-            // Total storage bytes
             Media.aggregate([
                 {
                     $match: {
@@ -26,7 +24,6 @@ const getMyStats = async (req, res) => {
                 },
                 { $group: { _id: null, totalBytes: { $sum: '$sizeBytes' } } },
             ]),
-            // Total minutes processed (lengthMs on COMPLETED media)
             Media.aggregate([
                 {
                     $match: {
@@ -38,6 +35,7 @@ const getMyStats = async (req, res) => {
                 },
                 { $group: { _id: null, totalMs: { $sum: '$lengthMs' } } },
             ]),
+            resolveSubscription(userId),
         ]);
 
         const byStatus = { UPLOADING: 0, UPLOADED: 0, PROCESSING: 0, COMPLETED: 0, FAILED: 0 };
@@ -54,6 +52,7 @@ const getMyStats = async (req, res) => {
             byStatus,
             storageBytesUsed,
             processingMinutes,
+            subscription,
         });
     } catch (err) {
         console.error('analyticsController.getMyStats:', err.message);

@@ -22,6 +22,27 @@ function getFormat(fileName) {
   return i >= 0 ? fileName.slice(i + 1).toLowerCase() : 'bin';
 }
 
+/** Best-effort duration from browser (per-file length limits). Uses audio or video element by type. */
+function getMediaDurationMs(file) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const el = (file.type || '').startsWith('audio/')
+      ? Object.assign(document.createElement('audio'), { preload: 'metadata' })
+      : Object.assign(document.createElement('video'), { preload: 'metadata' });
+    const clean = () => URL.revokeObjectURL(url);
+    el.onloadedmetadata = () => {
+      const sec = el.duration;
+      clean();
+      resolve(Number.isFinite(sec) && sec > 0 ? Math.round(sec * 1000) : null);
+    };
+    el.onerror = () => {
+      clean();
+      resolve(null);
+    };
+    el.src = url;
+  });
+}
+
 export default function Upload() {
   const [file, setFile] = useState(null);
   const [targetLanguageCode, setTargetLanguageCode] = useState('en');
@@ -51,11 +72,14 @@ export default function Upload() {
     const fileType = file.type || 'application/octet-stream';
     const mediaType = getMediaType(file);
     const format = getFormat(fileName);
+    const durationMs = await getMediaDurationMs(file);
 
     try {
       const { data: presigned } = await apiClient.post('/media/presigned-url', {
         fileName,
         fileType,
+        sizeBytes: file.size,
+        ...(durationMs != null ? { durationMs } : {}),
       });
       const { uploadUrl, fileKey } = presigned;
 
@@ -80,6 +104,7 @@ export default function Upload() {
         format,
         targetLanguageCode,
         sourceLanguageCode: sourceLanguageCode || undefined,
+        ...(durationMs != null ? { durationMs } : {}),
       });
 
       const mediaId = final?.media?._id;

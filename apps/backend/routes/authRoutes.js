@@ -10,7 +10,8 @@ const { register, login } = require('../controllers/authController');
 router.post('/register', [
     check('name', 'Name is required').not().isEmpty(),
     check('email', 'Please include a valid email').isEmail(),
-    check('password', 'Password must be at least 8 characters').isLength({ min: 8 })
+    check('password', 'Password must be at least 8 characters').isLength({ min: 8 }),
+    check('initialPlan').optional().isIn(['free', 'pro']).withMessage('initialPlan must be free or pro'),
 ], register);
 
 // @route   POST /api/auth/login

@@ -2,7 +2,10 @@ const mongoose = require('mongoose');
 const Media = require('../models/Media');
 const User = require('../models/User');
 const Transcript = require('../models/Transcript');
+const Subscription = require('../models/Subscription');
+const SubscriptionAuditLog = require('../models/SubscriptionAuditLog');
 const { sendToQueue } = require('../config/rabbitmq');
+const { resolveSubscription } = require('./subscriptionController');
 
 // @route  GET /api/admin/stats
 // @desc   Overview statistics for the admin dashboard
@@ -229,6 +232,7 @@ const retryFailedJob = async (req, res) => {
             });
         }
 
+        const sub = await resolveSubscription(media.mediaUploadedBy.toString());
         const taskPayload = {
             mediaId: media._id,
             userId: media.mediaUploadedBy,
@@ -238,6 +242,7 @@ const retryFailedJob = async (req, res) => {
                 media.sourceLanguageMode === 'FORCED' && media.sourceLanguageCode
                     ? media.sourceLanguageCode
                     : undefined,
+            maxDurationMinutesPerFile: sub.maxDurationMinutesPerFile || 30,
         };
 
         media.status = 'UPLOADED';
@@ -253,6 +258,46 @@ const retryFailedJob = async (req, res) => {
     }
 };
 
+// @route  GET /api/admin/subscriptions
+// @desc   All subscription rows (plan, Stripe ids, period)
+// @access Admin
+const getSubscriptionsOverview = async (req, res) => {
+    try {
+        const subscriptions = await Subscription.find()
+            .sort({ updatedAt: -1 })
+            .populate('userId', 'name email role createdAt');
+        return res.json({ subscriptions });
+    } catch (err) {
+        console.error('adminController.getSubscriptionsOverview:', err.message);
+        return res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+// @route  GET /api/admin/subscriptions/audit
+// @desc   Append-only subscription lifecycle log (signup, upgrades, Stripe events)
+// @access Admin
+const getSubscriptionAuditLogs = async (req, res) => {
+    try {
+        const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+        const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
+        const skip = (page - 1) * limit;
+
+        const [logs, total] = await Promise.all([
+            SubscriptionAuditLog.find()
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .populate('userId', 'name email'),
+            SubscriptionAuditLog.countDocuments(),
+        ]);
+
+        return res.json({ logs, total, page, limit });
+    } catch (err) {
+        console.error('adminController.getSubscriptionAuditLogs:', err.message);
+        return res.status(500).json({ msg: 'Server error' });
+    }
+};
+
 module.exports = {
     getStats,
     getAllMedia,
@@ -261,4 +306,6 @@ module.exports = {
     getJobs,
     restoreMedia,
     retryFailedJob,
+    getSubscriptionsOverview,
+    getSubscriptionAuditLogs,
 };

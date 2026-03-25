@@ -289,6 +289,15 @@ def process_message(ch, method, properties, body):
         # Get exact media length using ffprobe
         media_length_ms = get_media_length(local_raw_path)
 
+        max_dur_min = float(message.get("maxDurationMinutesPerFile") or 30)
+        max_ms = max_dur_min * 60 * 1000
+        if media_length_ms > max_ms:
+            current_stage = "DURATION_EXCEEDS_PLAN"
+            raise ValueError(
+                f"This media is too long (~{media_length_ms / 60000:.1f} min). "
+                f"Your plan allows up to {int(max_dur_min)} minutes per file."
+            )
+
         # Extract Audio
         current_stage = "EXTRACTING_AUDIO"
         extract_audio(local_raw_path, local_audio_path)
@@ -408,7 +417,8 @@ def process_message(ch, method, properties, body):
         # Insert into the 'transcripts' collection
         db.transcripts.insert_one(transcript_doc)
 
-        # Update Media status
+        # Update Media status (completedAt = sticky usage for monthly quota — not removed on delete)
+        now_utc = datetime.now(timezone.utc)
         update_result = db.media.update_one(
             {"_id": ObjectId(media_id)},
             {"$set": {
@@ -416,7 +426,8 @@ def process_message(ch, method, properties, body):
                 "sizeBytes": file_size,
                 "storage.sizeBytes": file_size,
                 "detectedLanguage": detected_lang,
-                "lengthMs": media_length_ms
+                "lengthMs": media_length_ms,
+                "completedAt": now_utc,
             }}
         )
 

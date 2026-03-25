@@ -29,6 +29,8 @@ const mediaSchema = new mongoose.Schema(
       attempt: { type: Number },
     },
     deletedAt: { type: Date, default: null },
+    /** Set when transcription completes; used for monthly usage (counts even if media is later deleted). */
+    completedAt: { type: Date, default: null, index: true },
   },
   { timestamps: true }
 );

@@ -1,6 +1,7 @@
 import { useContext, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import PricingSection from '../components/PricingSection';
 
 export default function Landing() {
   const { token } = useContext(AuthContext);
@@ -22,6 +23,12 @@ export default function Landing() {
         <span className="text-xl font-bold tracking-tight text-slate-800 sm:text-2xl">Scriptify</span>
         <div className="flex items-center gap-3">
           <Link
+            to="/pricing"
+            className="rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition-all duration-200 hover:bg-white hover:text-emerald-600 hover:shadow-md sm:px-4"
+          >
+            Pricing
+          </Link>
+          <Link
             to="/login?next=%2Fdashboard%2Fupload"
             className="rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition-all duration-200 hover:bg-white hover:text-emerald-600 hover:shadow-md sm:px-4"
           >
@@ -36,7 +43,7 @@ export default function Landing() {
         </div>
       </header>
 
-      <main className="relative flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center px-4 py-12 sm:py-16">
+      <main className="relative flex flex-col items-center px-4 py-12 sm:py-16">
         <div className="max-w-xl text-center">
           <h1 className="animate-fade-in opacity-0 [animation-fill-mode:forwards] text-3xl font-bold tracking-tight text-slate-800 sm:text-4xl lg:text-5xl [animation-delay:100ms]">
             Turn media into text
@@ -53,6 +60,10 @@ export default function Landing() {
           <p className="mt-4 animate-fade-in opacity-0 text-sm text-slate-500 [animation-fill-mode:forwards] [animation-delay:400ms]">
             Sign in or create an account to upload and manage your media.
           </p>
+        </div>
+
+        <div className="mt-20 w-full max-w-5xl border-t border-slate-200/80 pt-16">
+          <PricingSection />
         </div>
       </main>
     </div>

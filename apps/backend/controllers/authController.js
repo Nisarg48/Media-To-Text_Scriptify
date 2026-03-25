@@ -2,6 +2,8 @@ const { validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Subscription = require('../models/Subscription');
+const { logSubscriptionEvent } = require('../services/subscriptionAuditService');
 
 /**
  * Derive role from email pattern:
@@ -25,7 +27,8 @@ const register = async (req, res) => {
         return res.status(400).json({ errors: errors.array() });
     }
 
-    const { name, email, password } = req.body;
+    const { name, email, password, initialPlan = 'free' } = req.body;
+    const planChoice = initialPlan === 'pro' ? 'pro' : 'free';
 
     try {
         let user = await User.findOne({ email });
@@ -40,10 +43,31 @@ const register = async (req, res) => {
         user.password = await bcrypt.hash(password, salt);
         await user.save();
 
+        if (planChoice === 'free') {
+            await Subscription.create({
+                userId: user._id,
+                plan: 'free',
+                status: 'active',
+            });
+            await logSubscriptionEvent({
+                userId: user._id,
+                action: 'signup_free',
+                toPlan: 'free',
+                metadata: { source: 'email_registration' },
+            });
+        } else {
+            await logSubscriptionEvent({
+                userId: user._id,
+                action: 'signup_chose_pro',
+                toPlan: 'pro',
+                metadata: { source: 'email_registration', next: 'stripe_checkout' },
+            });
+        }
+
         const payload = { user: { id: user.id, role: user.role } };
         const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-        return res.status(201).json({ token });
+        return res.status(201).json({ token, initialPlan: planChoice });
     } catch (err) {
         console.error(err.message);
         return res.status(500).send('Server error');

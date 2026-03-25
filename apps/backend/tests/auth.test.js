@@ -32,6 +32,7 @@ describe('POST /api/auth/register', () => {
 
     expect(res.statusCode).toBe(201);
     expect(res.body).toHaveProperty('token');
+    expect(res.body.initialPlan).toBe('free');
   });
 
   it('assigns role=user for non-scriptify emails', async () => {
@@ -41,6 +42,16 @@ describe('POST /api/auth/register', () => {
 
     expect(res.statusCode).toBe(201);
     expect(res.body).toHaveProperty('token');
+    expect(res.body.initialPlan).toBe('free');
+  });
+
+  it('accepts initialPlan pro in body', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ name: 'ProUser', email: 'prouser@example.com', password: 'password123', initialPlan: 'pro' });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body.initialPlan).toBe('pro');
   });
 
   it('rejects duplicate email', async () => {

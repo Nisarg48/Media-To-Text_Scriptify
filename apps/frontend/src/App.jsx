@@ -10,11 +10,14 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Upload from './pages/Upload';
 import MediaDetail from './pages/MediaDetail';
+import Pricing from './pages/Pricing';
+import Billing from './pages/Billing';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminMedia from './pages/admin/AdminMedia';
 import AdminMediaDetail from './pages/admin/AdminMediaDetail';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminJobs from './pages/admin/AdminJobs';
+import AdminSubscriptions from './pages/admin/AdminSubscriptions';
 
 function App() {
   return (
@@ -24,6 +27,7 @@ function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/pricing" element={<Pricing />} />
 
           {/* User dashboard */}
           <Route
@@ -35,6 +39,7 @@ function App() {
           >
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="dashboard/upload" element={<Upload />} />
+            <Route path="dashboard/billing" element={<Billing />} />
             <Route path="media/:id" element={<MediaDetail />} />
           </Route>
 
@@ -51,6 +56,7 @@ function App() {
             <Route path="admin/media/:id" element={<AdminMediaDetail />} />
             <Route path="admin/users" element={<AdminUsers />} />
             <Route path="admin/jobs" element={<AdminJobs />} />
+            <Route path="admin/subscriptions" element={<AdminSubscriptions />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
