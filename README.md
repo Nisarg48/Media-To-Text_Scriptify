@@ -1,6 +1,6 @@
 # Scriptify (Media-To-Text)
 
-**Scriptify** is a web application that turns uploaded **audio and video** into **time-aligned transcripts**. Users choose a **target language** for the final text; the system uses **speech recognition** (OpenAI Whisper) and, when needed, **machine translation** (Google Gemini) to produce subtitles-style segments and plain text. The product is built as a **monorepo** with a React frontend, a Node.js API, asynchronous background processing, object storage for files, and MongoDB for metadata.
+**Scriptify** is a web application that turns uploaded **audio and video** into **time-aligned transcripts**. Users choose a **target language** for the final text; the system uses **speech recognition** (OpenAI Whisper) and, when needed, **machine translation** (Google Gemini) to produce subtitles-style segments and plain text. Recent work adds **plan-based usage metering** (monthly minutes, per-file length and size caps, parallel job limits), optional **Stripe** checkout and customer portal for a **Pro** tier, **AI summaries** of completed transcripts (Markdown via Gemini, optional PDF export), **per-user analytics**, a **health** endpoint for operations, **GitHub Actions CI**, and **Docker Compose** for local full-stack runs. The product is a **monorepo** with a React frontend, a Node.js API, asynchronous background processing, object storage for files, and MongoDB for metadata.
 
 ---
 
@@ -10,8 +10,9 @@
 2. Let users **upload** media via a **presigned URL** flow (direct upload to object storage).
 3. **Finalize** the upload in the API, persist a **Media** record, and enqueue a **job** for the worker.
 4. A **Python worker** pulls jobs from a **message queue**, downloads the file, extracts audio, runs **Whisper**, optionally **translates** via Gemini, writes a **JSON transcript** to object storage, and updates **MongoDB**.
-5. Users **view** progress, **play** media with a presigned stream URL, **edit** transcript text and segments in the UI, **download** SubRip (`.srt`), and **soft-delete** media (files removed from storage; DB rows kept for audit).
-6. **Admins** inspect aggregate stats, browse all media and users, monitor failed/processing jobs, and **restore** soft-deleted media records.
+5. Users **view** progress, **play** media with a presigned stream URL, **edit** transcript text and segments in the UI, **export** transcripts as **SubRip** (`.srt`), **WebVTT** (`.vtt`), or plain **text**, **generate** and edit **summaries**, and **soft-delete** media (files removed from storage; DB rows kept for audit).
+6. **Plans** (Free / Pro) enforce **monthly transcription minutes** (from completed media length), **max duration per file**, **max file size**, and **how many jobs** may be **UPLOADED** or **PROCESSING** at once; optional **Stripe** upgrades **Pro** and syncs status via webhooks.
+7. **Admins** inspect aggregate stats, browse all media and users, monitor failed/processing jobs, **retry** failed jobs, **restore** soft-deleted media, and review **subscriptions** plus an **audit log** of billing-related events.
 
 ---
 
@@ -19,8 +20,8 @@
 
 | Path | Role |
 |------|------|
-| `apps/frontend` | React (Vite) SPA: auth, dashboard, upload, media detail, transcript editor, admin UI. |
-| `apps/backend` | Express REST API: auth, media, transcripts, admin; integrates MongoDB, queue, S3-compatible storage. |
+| `apps/frontend` | React (Vite) SPA: landing, pricing, billing, auth, dashboard, upload, media detail (player, timeline, summaries), transcript editor, admin UI. |
+| `apps/backend` | Express REST API: auth, media, transcripts, summaries, analytics, subscriptions (Stripe), admin; MongoDB, queue, S3-compatible storage, rate limits. |
 | `apps/ai_worker` | Python consumer: RabbitMQ → MinIO → FFmpeg → Whisper → optional Gemini → MinIO + MongoDB. |
 | `apps/shared` | Shared static data, e.g. `languages.json` (allowed target languages), imported by frontend and backend. |
 
@@ -85,7 +86,7 @@ For each message, the worker:
 3. Rejects **empty** files.
 4. Measures **duration** with **ffprobe**.
 5. **Extracts audio** with **FFmpeg** to a mono, 16 kHz WAV suitable for Whisper.
-6. Runs **Whisper** (`small` model in the current codebase; device is CUDA when available, else CPU) with **`fp16=False`** for stability.
+6. Runs **Whisper** with model size from **`WHISPER_MODEL`** (e.g. `small`, `medium`; see `.env.example`), CUDA when available else CPU, with **`fp16=False`** for stability.
 7. Applies **language / translation rules** (see §7).
 8. Builds a JSON document `{ text, segments }` and uploads it to storage under `transcripts/{mediaId}_{outputLang}.json`.
 9. Inserts a **Transcript** document in MongoDB (plain text, language, confidence, timings, pointer to JSON in storage).
@@ -137,6 +138,10 @@ On login, the stored **DB role** is preferred; the email pattern is a fallback f
 - **`adminAuth`**: requires JWT **and** `role === 'admin'`.
 
 Admin API routes apply **both** middlewares globally on the router.
+
+### 6.5 Rate limiting
+
+The API applies **express-rate-limit** style caps: stricter limits on **`/api/auth`**, a general limit on **`/api/*`**, and an additional limit on **upload-related** media routes (`presigned-url`, `finalize`) to reduce abuse.
 
 ---
 
@@ -232,26 +237,34 @@ The canonical artifact is JSON with:
 
 - **GET content** – stream JSON from storage via the API (for the editor UI).
 - **PUT update** – update **`plainText`** in MongoDB and **overwrite** the JSON object in storage with new `text` + `segments`.
-- **GET download (SRT)** – read JSON from storage, convert segments to **SubRip** timestamps, return as downloadable `.srt`.
+- **GET download** – query **`format=srt`** (default), **`vtt`**, or **`txt`**; reads JSON from storage and returns the appropriate download.
 
-SRT time formatting converts segment **start/end** seconds into `HH:MM:SS,mmm` lines.
+SRT time formatting converts segment **start/end** seconds into `HH:MM:SS,mmm` lines; VTT uses WebVTT timestamps.
 
-### 10.4 Access control nuance
+### 10.4 Access control
 
-**Media** routes generally enforce that the authenticated user **owns** the document (`mediaUploadedBy`). **Transcript** routes look up a transcript by **`mediaId`** with a valid JWT but do not always re-check media ownership in the controller layer; understanding the codebase includes knowing that tightening this (verify `Media.mediaUploadedBy === req.user.id` or admin) is a typical hardening step.
+**Media** list/detail/delete/play routes enforce ownership in the media controller. **Transcript** and **summary** routes use **`assertUserOwnsMedia`**: the media must exist, belong to **`req.user.id`**, and not be soft-deleted (otherwise **404**).
 
 ---
 
-## 11. Media HTTP API (user)
+## 11. User-facing HTTP API (summary)
 
-Typical operations (all require JWT):
+### 11.1 Media (JWT)
 
-- Request **presigned upload** URL + key  
-- **Finalize** upload and enqueue processing  
-- **List** own media (excluding soft-deleted; some fields like raw storage may be omitted in list views)  
-- **Get** one media item **with** transcript metadata  
-- **Delete** (soft delete + storage cleanup)  
-- **Playback URL** – presigned **GET** for inline streaming with content disposition derived from filename  
+- Request **presigned upload** URL + key (plan checks: **file size**, optional client **duration**, applied again on **finalize**)  
+- **Finalize** upload and enqueue processing (also enforces **monthly minute quota** and **parallel job** cap)  
+- **List** / **get** / **delete** / **playback URL** for owned media  
+
+### 11.2 Transcripts, summaries, billing, analytics (JWT)
+
+- **`/api/transcripts/...`** – content, update, download (**srt** / **vtt** / **txt**)  
+- **`/api/summaries/:mediaId`** – get, **generate** (Gemini), update notes, **PDF** download  
+- **`/api/subscriptions/me`**, **`checkout`**, **`portal`** – current plan and Stripe sessions (**Stripe** keys and **`STRIPE_PRICE_ID_PRO`** required for paid checkout)  
+- **`/api/analytics/me`** – file counts by status, storage bytes used, **processing minutes** used, and resolved **subscription / limits** for the dashboard  
+
+### 11.3 Health (no auth)
+
+- **`GET /api/health`** – **200** when MongoDB is connected (**503** otherwise); optional RabbitMQ connectivity probe when **`RABBITMQ_URL`** is set (does not fail readiness).
 
 ---
 
@@ -264,18 +277,24 @@ Admins use the same JWT mechanism with **`admin`** role. Capabilities include:
 - **Media detail** – full document including soft-deleted; includes transcript metadata when present.
 - **Users list** – without passwords; **media counts** per user via aggregation.
 - **Jobs view** – recent **FAILED** and **PROCESSING** items for monitoring.
+- **Retry job** – requeue processing for a failed media item where appropriate.
 - **Restore** – clear **`deletedAt`** on a media record (does not restore deleted storage objects automatically).
+- **Subscriptions** – overview of plans and Stripe-linked records.
+- **Subscription audit** – append-only style log of subscription/billing events for support and compliance.
 
 ---
 
 ## 13. Frontend application structure (logical)
 
 - **Auth context** – holds token and user state; protects routes.
-- **Landing / login / register** – onboarding.
-- **Dashboard** – lists user media and status.
-- **Upload** – chooses file, target language (and optional source), uses presigned flow then finalize.
-- **Media detail** – playback, processing timeline, transcript view/edit, download SRT, delete.
-- **Admin section** – separate layout and routes; dashboard, media list/detail, users, jobs.
+- **Landing** – marketing-style entry; links to **pricing**, login, and register.
+- **Login / register** – onboarding.
+- **Pricing** – plan comparison aligned with backend **`config/plans.js`**.
+- **Dashboard** – lists user media and status; surfaces **usage** from **`/api/analytics/me`** where implemented.
+- **Upload** – chooses file, target language (and optional source), uses presigned flow then finalize; respects plan error codes (quota, file too large/long, parallel jobs).
+- **Billing** – Stripe **checkout** and **customer portal** for upgrades and subscription management.
+- **Media detail** – custom **video/audio player**, **processing timeline**, transcript editor with **follow mode** (active segment without scrolling the whole page), **multi-format export**, **AI summary** generation and notes, delete.
+- **Admin section** – separate layout and routes; dashboard, media list/detail, users, jobs, **subscriptions** and **audit**.
 
 Shared **language lists** come from **`apps/shared/languages.json`** so UI and API stay aligned.
 
@@ -289,7 +308,9 @@ Shared **language lists** come from **`apps/shared/languages.json`** so UI and A
 | **Media** | Ownership, filename, type, format, status, storage reference, optional source language fields, detected language, duration, size, `errorDetails`, `deletedAt`. |
 | **Transcript** | One primary transcript per media in the main flow; text + storage pointer to JSON + metrics. |
 | **Storage** (embedded schema) | Reusable `{ bucket, key, format, sizeBytes? }` for media and transcript files. |
-| **Summary** | Schema exists for future **summarization** (linking media, transcript, summary text and language); not wired through the main REST surface in the current tree. |
+| **Summary** | Links to media/transcript; stores generated Markdown summary, optional user notes; **REST** under **`/api/summaries`**, PDF via **`summaryPdf`** utility. |
+| **Subscription** | One per user: **`free`** / **`pro`**, Stripe customer/subscription ids, period boundaries, status. |
+| **SubscriptionAuditLog** | Records subscription/billing events for admin review. |
 
 ---
 
@@ -303,11 +324,42 @@ Shared **language lists** come from **`apps/shared/languages.json`** so UI and A
 
 ## 16. Technology choices (informational)
 
-- **Frontend:** React, Vite, Tailwind (and related UI tooling).  
-- **Backend:** Node.js, Express, Mongoose, JWT, bcrypt, AWS SDK v3 (S3), AMQP client.  
-- **Worker:** Python, PyTorch / Whisper, FFmpeg, MinIO client, Pika, PyMongo, Google GenAI client for Gemini.  
+- **Frontend:** React, Vite, Tailwind (and related UI tooling), Vitest for unit tests.  
+- **Backend:** Node.js, Express, Mongoose, JWT, bcrypt, AWS SDK v3 (S3), AMQP client, **Stripe** server SDK, **express-rate-limit**, Jest/supertest for API tests.  
+- **Worker:** Python, PyTorch / Whisper, FFmpeg, MinIO client, Pika, PyMongo, Google GenAI client for Gemini; **pytest** for lightweight tests (CI installs a minimal subset of dependencies).  
 - **Data:** MongoDB for documents; S3-compatible storage for blobs; AMQP-compatible queue for jobs.
 
 ---
 
-This document describes **what** the project is and **how its parts fit together**. It intentionally omits deployment, environment setup, and run instructions.
+## 17. Subscriptions and metering
+
+- **Plan definitions** live in **`apps/backend/config/plans.js`** (Free vs Pro: monthly **minutes**, **max duration per file**, **max file size**, **max parallel jobs**).  
+- **`Subscription`** documents mirror Stripe when checkout is configured; **`resolveSubscription`** merges Stripe state with plan limits and **computes usage** from completed media length.  
+- **Enforcement** happens on **presigned URL** (size/duration hints) and **finalize** (duration, **quota**, **parallel jobs**). Usage does not decrease when users delete media (by product design).  
+- **Stripe webhook** is mounted with **raw body** on **`/api/subscriptions/webhook`** (see **`app.js`**); **`STRIPE_*`** variables are documented in **`.env.example`**.
+
+---
+
+## 18. AI summaries (API)
+
+- After a transcript exists, authenticated owners can **POST** generate a Markdown summary via **Gemini** using **`GEMINI_API_KEY`** on the **API** (optional **`GEMINI_SUMMARY_MODEL`**; distinct from the worker’s key used for translation).  
+- **GET** returns the stored summary; **PUT** updates user **notes**; **GET** `.../download/pdf` returns a generated PDF.
+
+---
+
+## 19. CI and quality gates
+
+- **`.github/workflows/ci.yml`** runs on **push** and **pull_request** to **`main`**: backend **lint** + **test**, frontend **lint** + **test** + **build**, worker **syntax check** + **pytest**.  
+- Backend tests use **mongodb-memory-server** (binary cache path set in the workflow).
+
+---
+
+## 20. Local development and Docker
+
+- **`.env.example`** at the repo root lists variables for backend, frontend build (**`VITE_API_BASE_URL`**), worker (**`WHISPER_MODEL`**, **`GEMINI_API_KEY`**, etc.), and Stripe.  
+- **`docker-compose.yml`** brings up backend, frontend (nginx on port **80**), worker, RabbitMQ (management UI on **15673** in the default file), and MinIO (**9000** / console **9001**). Use **`docker-compose.gpu.yml`** with **`-f`** for NVIDIA GPU overrides.  
+- **`start.sh`** / **`start.bat`** in the repo root help bootstrap local runs (see script comments).
+
+---
+
+This document describes **what** the project is and **how its parts fit together**. For **environment variables**, **Compose** layout, and **CI** behavior, see **§19–§20** and **`.env.example`**.
