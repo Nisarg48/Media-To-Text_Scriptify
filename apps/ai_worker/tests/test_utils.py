@@ -77,6 +77,7 @@ os.environ.setdefault('MONGODB_URL', 'mongodb://localhost:27017')
 os.environ.setdefault('MONGODB_DATABASE_NAME', 'test')
 os.environ.setdefault('SUPPORTED_EXTENSIONS', '.mp4,.mp3,.wav,.m4a,.mov,.avi,.mkv')
 os.environ.setdefault('GEMINI_API_KEY', '')
+os.environ.setdefault('WHISPER_MODEL', 'small')
 
 import importlib
 main = importlib.import_module('main')

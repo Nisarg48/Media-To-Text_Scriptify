@@ -46,6 +46,7 @@ const getTranscriptContent = async (req, res) => {
             return res.status(404).json({ msg: 'Transcript not found' });
         }
 
+        res.set('Cache-Control', 'private, max-age=60');
         res.json(jsonData);
     } catch (error) {
         console.error('Error fetching transcript content:', error);
@@ -70,14 +71,10 @@ const updateTranscript = async (req, res) => {
         transcript.plainText = updatedText;
         await transcript.save();
 
-        const newJsonData = JSON.stringify(
-            {
-                text: updatedText,
-                segments: updatedSegments,
-            },
-            null,
-            2
-        );
+        const newJsonData = JSON.stringify({
+            text: updatedText,
+            segments: updatedSegments,
+        });
 
         const updateCommand = new PutObjectCommand({
             Bucket: transcript.jsonFile.bucket,

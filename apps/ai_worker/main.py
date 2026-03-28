@@ -24,6 +24,8 @@ SUPPORTED_EXTENSIONS = tuple(os.getenv('SUPPORTED_EXTENSIONS').split(','))
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
+WHISPER_MODEL = (os.getenv("WHISPER_MODEL") or "small").strip() or "small"
+
 # Setup GPU if available
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"🚀 AI Hardware: {device.upper()} ({torch.cuda.get_device_name(0) if device == 'cuda' else 'CPU'})")
@@ -34,9 +36,9 @@ if GEMINI_API_KEY:
 else:
     print("⚠️ GEMINI_API_KEY not found in .env!")
 
-# Load Whisper
-print("🧠 Loading Whisper 'small' model... ")
-model = whisper.load_model("small", device=device)
+# Load Whisper (size from WHISPER_MODEL env; see .env.example / docker-compose)
+print(f"🧠 Loading Whisper '{WHISPER_MODEL}' model... ")
+model = whisper.load_model(WHISPER_MODEL, device=device)
 
 # Initialize DB client
 db_client = MongoClient(MONGODB_URL)
@@ -211,7 +213,7 @@ def process_message(ch, method, properties, body):
 
     local_raw_path = local_audio_path = local_json_path = None
     media_id = None
-    model_name = 'small'
+    whisper_wall_s = None
     current_stage = "INITIALIZING"
     completed_successfully = False
     processing_attempt = 1
@@ -307,7 +309,8 @@ def process_message(ch, method, properties, body):
 
         # Start Transcription
         current_stage = "TRANSCRIBING"
-        print(f"🤖 Transcribing Audio on {torch.cuda.get_device_name(0)}...")
+        hw_label = torch.cuda.get_device_name(0) if device == "cuda" else "CPU"
+        print(f"🤖 Transcribing Audio on {hw_label}...")
         model_start = time.time()
 
         # Determine Whisper Task: "translate" = output English only; "transcribe" = output in source language
@@ -330,6 +333,7 @@ def process_message(ch, method, properties, body):
             )
 
         model_end = time.time()
+        whisper_wall_s = round(model_end - model_start, 2)
 
         # Whisper's detected source language (effective source = forced source or detected)
         detected_lang = result.get("language", "en")
@@ -407,7 +411,7 @@ def process_message(ch, method, properties, body):
             },
             "language": output_lang,
             "confidence": confidence,
-            "modelSize": model_name,
+            "modelSize": WHISPER_MODEL,
             "totalTranscriptionTime": round(time.time() - start_time, 2),
             "modelProcessingTime": round(model_end - model_start, 2),
             "createdAt": datetime.now(timezone.utc),
@@ -434,11 +438,20 @@ def process_message(ch, method, properties, body):
         print(f"📝 DB Update Report -> Matched: {update_result.matched_count} | Modified: {update_result.modified_count}")
 
         print(f"✅ Transcript saved and media status updated for media ID: {media_id}")
+        total_elapsed = round(time.time() - start_time, 2)
+        print(
+            f"METRIC job_complete media_id={media_id} total_s={total_elapsed} "
+            f"whisper_s={whisper_wall_s} length_ms={media_length_ms} target={target_language_code}"
+        )
         completed_successfully = True
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     except Exception as e:
         print(f"❌ Error processing message: {e}")
+        fail_total = round(time.time() - start_time, 2)
+        print(
+            f"METRIC job_failed media_id={media_id or 'unknown'} stage={current_stage} total_s={fail_total}"
+        )
         if media_id and not completed_successfully:
             user_message = get_user_friendly_error(current_stage, str(e))
             if processing_attempt >= 2:
