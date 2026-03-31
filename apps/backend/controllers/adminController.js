@@ -5,7 +5,6 @@ const Transcript = require('../models/Transcript');
 const Subscription = require('../models/Subscription');
 const SubscriptionAuditLog = require('../models/SubscriptionAuditLog');
 const { sendToQueue } = require('../config/rabbitmq');
-const { resolveSubscription } = require('./subscriptionController');
 
 // @route  GET /api/admin/stats
 // @desc   Overview statistics for the admin dashboard
@@ -232,7 +231,6 @@ const retryFailedJob = async (req, res) => {
             });
         }
 
-        const sub = await resolveSubscription(media.mediaUploadedBy.toString());
         const taskPayload = {
             mediaId: media._id,
             userId: media.mediaUploadedBy,
@@ -242,7 +240,6 @@ const retryFailedJob = async (req, res) => {
                 media.sourceLanguageMode === 'FORCED' && media.sourceLanguageCode
                     ? media.sourceLanguageCode
                     : undefined,
-            maxDurationMinutesPerFile: sub.maxDurationMinutesPerFile || 30,
         };
 
         media.status = 'UPLOADED';

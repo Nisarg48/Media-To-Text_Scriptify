@@ -1,39 +1,34 @@
 const Media = require('../models/Media');
 const { resolveSubscription } = require('./subscriptionController');
+const { buildDashboardMediaMatch } = require('../utils/dashboardMediaQuery');
+const { firstQueryValue } = require('../utils/mediaPeriodMatch');
 
 /**
  * GET /api/analytics/me
- * Per-user usage statistics derived from their Media documents, plus plan/quota info.
+ * Query: periodScope=all|range (optional legacy: omit + periodStart/periodEnd for UTC month).
+ * Dashboard should send periodScope explicitly.
  */
 const getMyStats = async (req, res) => {
     try {
         const userId = req.user.id;
+        const built = buildDashboardMediaMatch(req.query, userId);
+        if (built.error) {
+            return res.status(built.error.status).json({ msg: built.error.msg });
+        }
+        const periodMatch = built.match;
 
-        const [statusCounts, storagePipeline, minutesPipeline, subscription] = await Promise.all([
+        const [statusCounts, storagePipeline, subscription] = await Promise.all([
             Media.aggregate([
-                { $match: { mediaUploadedBy: require('mongoose').Types.ObjectId.createFromHexString(userId), deletedAt: null } },
+                { $match: periodMatch },
                 { $group: { _id: '$status', count: { $sum: 1 } } },
             ]),
             Media.aggregate([
                 {
                     $match: {
-                        mediaUploadedBy: require('mongoose').Types.ObjectId.createFromHexString(userId),
-                        deletedAt: null,
-                        sizeBytes: { $gt: 0 },
+                        $and: [...periodMatch.$and, { sizeBytes: { $gt: 0 } }],
                     },
                 },
                 { $group: { _id: null, totalBytes: { $sum: '$sizeBytes' } } },
-            ]),
-            Media.aggregate([
-                {
-                    $match: {
-                        mediaUploadedBy: require('mongoose').Types.ObjectId.createFromHexString(userId),
-                        deletedAt: null,
-                        status: 'COMPLETED',
-                        lengthMs: { $gt: 0 },
-                    },
-                },
-                { $group: { _id: null, totalMs: { $sum: '$lengthMs' } } },
             ]),
             resolveSubscription(userId),
         ]);
@@ -45,14 +40,15 @@ const getMyStats = async (req, res) => {
 
         const totalFiles = Object.values(byStatus).reduce((a, b) => a + b, 0);
         const storageBytesUsed = storagePipeline[0]?.totalBytes ?? 0;
-        const processingMinutes = Math.round((minutesPipeline[0]?.totalMs ?? 0) / 60000);
 
+        res.set('Cache-Control', 'private, no-store');
         return res.json({
             totalFiles,
             byStatus,
             storageBytesUsed,
-            processingMinutes,
             subscription,
+            period: built.periodEcho,
+            periodScope: firstQueryValue(req.query.periodScope) || 'legacy',
         });
     } catch (err) {
         console.error('analyticsController.getMyStats:', err.message);

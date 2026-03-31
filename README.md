@@ -1,6 +1,6 @@
 # Scriptify (Media-To-Text)
 
-**Scriptify** is a web application that turns uploaded **audio and video** into **time-aligned transcripts**. Users choose a **target language** for the final text; the system uses **speech recognition** (OpenAI Whisper) and, when needed, **machine translation** (Google Gemini) to produce subtitles-style segments and plain text. Recent work adds **plan-based usage metering** (monthly minutes, per-file length and size caps, parallel job limits), optional **Stripe** checkout and customer portal for a **Pro** tier, **AI summaries** of completed transcripts (Markdown via Gemini, optional PDF export), **per-user analytics**, a **health** endpoint for operations, **GitHub Actions CI**, and **Docker Compose** for local full-stack runs. The product is a **monorepo** with a React frontend, a Node.js API, asynchronous background processing, object storage for files, and MongoDB for metadata.
+**Scriptify** is a web application that turns uploaded **audio and video** into **time-aligned transcripts**. Users choose a **target language** for the final text; the system uses **speech recognition** (OpenAI Whisper) and, when needed, **machine translation** (Google Gemini) to produce subtitles-style segments and plain text. Recent work adds **plan-based limits** (media slots, per-file size and length caps, retention, parallel jobs), optional **Stripe** checkout and customer portal for a **Pro** tier, **AI summaries** of completed transcripts (Markdown via Gemini, optional PDF export), **per-user analytics**, a **health** endpoint for operations, **GitHub Actions CI**, and **Docker Compose** for local full-stack runs. The product is a **monorepo** with a React frontend, a Node.js API, asynchronous background processing, object storage for files, and MongoDB for metadata.
 
 ---
 
@@ -11,7 +11,7 @@
 3. **Finalize** the upload in the API, persist a **Media** record, and enqueue a **job** for the worker.
 4. A **Python worker** pulls jobs from a **message queue**, downloads the file, extracts audio, runs **Whisper**, optionally **translates** via Gemini, writes a **JSON transcript** to object storage, and updates **MongoDB**.
 5. Users **view** progress, **play** media with a presigned stream URL, **edit** transcript text and segments in the UI, **export** transcripts as **SubRip** (`.srt`), **WebVTT** (`.vtt`), or plain **text**, **generate** and edit **summaries**, and **soft-delete** media (files removed from storage; DB rows kept for audit).
-6. **Plans** (Free / Pro) enforce **monthly transcription minutes** (from completed media length), **max duration per file**, **max file size**, and **how many jobs** may be **UPLOADED** or **PROCESSING** at once; optional **Stripe** upgrades **Pro** and syncs status via webhooks.
+6. **Plans** (Free / Pro) enforce **how many media items** you may keep at once, **max file size**, **retention** (auto-removal after N days), **parallel jobs**, and optional **Stripe** upgrades **Pro** with webhook sync.
 7. **Admins** inspect aggregate stats, browse all media and users, monitor failed/processing jobs, **retry** failed jobs, **restore** soft-deleted media, and review **subscriptions** plus an **audit log** of billing-related events.
 
 ---
@@ -251,8 +251,8 @@ SRT time formatting converts segment **start/end** seconds into `HH:MM:SS,mmm` l
 
 ### 11.1 Media (JWT)
 
-- Request **presigned upload** URL + key (plan checks: **file size**, optional client **duration**, applied again on **finalize**)  
-- **Finalize** upload and enqueue processing (also enforces **monthly minute quota** and **parallel job** cap)  
+- Request **presigned upload** URL + key (plan checks: **file size**; **finalize** checks **media slots** and **parallel jobs**)  
+- **Finalize** upload and enqueue processing (also enforces **media slot** limit and **parallel job** cap)  
 - **List** / **get** / **delete** / **playback URL** for owned media  
 
 ### 11.2 Transcripts, summaries, billing, analytics (JWT)
@@ -260,7 +260,7 @@ SRT time formatting converts segment **start/end** seconds into `HH:MM:SS,mmm` l
 - **`/api/transcripts/...`** – content, update, download (**srt** / **vtt** / **txt**)  
 - **`/api/summaries/:mediaId`** – get, **generate** (Gemini), update notes, **PDF** download  
 - **`/api/subscriptions/me`**, **`checkout`**, **`portal`** – current plan and Stripe sessions (**Stripe** keys and **`STRIPE_PRICE_ID_PRO`** required for paid checkout)  
-- **`/api/analytics/me`** – file counts by status, storage bytes used, **processing minutes** used, and resolved **subscription / limits** for the dashboard  
+- **`/api/analytics/me`** – file counts by status, storage bytes used, and resolved **subscription / limits** for the dashboard  
 
 ### 11.3 Health (no auth)
 
@@ -291,7 +291,7 @@ Admins use the same JWT mechanism with **`admin`** role. Capabilities include:
 - **Login / register** – onboarding.
 - **Pricing** – plan comparison aligned with backend **`config/plans.js`**.
 - **Dashboard** – lists user media and status; surfaces **usage** from **`/api/analytics/me`** where implemented.
-- **Upload** – chooses file, target language (and optional source), uses presigned flow then finalize; respects plan error codes (quota, file too large/long, parallel jobs).
+- **Upload** – chooses file, target language (and optional source), uses presigned flow then finalize; respects plan error codes (media slot limit, file too large, parallel jobs).
 - **Billing** – Stripe **checkout** and **customer portal** for upgrades and subscription management.
 - **Media detail** – custom **video/audio player**, **processing timeline**, transcript editor with **follow mode** (active segment without scrolling the whole page), **multi-format export**, **AI summary** generation and notes, delete.
 - **Admin section** – separate layout and routes; dashboard, media list/detail, users, jobs, **subscriptions** and **audit**.
@@ -331,12 +331,13 @@ Shared **language lists** come from **`apps/shared/languages.json`** so UI and A
 
 ---
 
-## 17. Subscriptions and metering
+## 17. Subscriptions and limits
 
-- **Plan definitions** live in **`apps/backend/config/plans.js`** (Free vs Pro: monthly **minutes**, **max duration per file**, **max file size**, **max parallel jobs**).  
-- **`Subscription`** documents mirror Stripe when checkout is configured; **`resolveSubscription`** merges Stripe state with plan limits and **computes usage** from completed media length.  
-- **Enforcement** happens on **presigned URL** (size/duration hints) and **finalize** (duration, **quota**, **parallel jobs**). Usage does not decrease when users delete media (by product design).  
-- **Stripe webhook** is mounted with **raw body** on **`/api/subscriptions/webhook`** (see **`app.js`**); **`STRIPE_*`** variables are documented in **`.env.example`**.
+- **Plan definitions** live in **`apps/backend/config/plans.js`** (Free vs Pro: **media count**, **max file size**, **retention days**, **max parallel jobs**).  
+- **`Subscription`** documents mirror Stripe when checkout is configured; **`resolveSubscription`** merges Stripe state with plan limits and **counts active (non-deleted) media** for slot display and enforcement.  
+- **Enforcement** happens on **presigned URL** and **finalize** (**file size**, **media slots**, **parallel jobs**).  
+- **Stripe webhook** is mounted with **raw body** on **`/api/subscriptions/webhook`** (see **`app.js`**); **`STRIPE_*`** variables are documented in **`.env.example`**.  
+- **Entitlement** is time-based: Pro requires `active`/`trialing`, a set **`currentPeriodEnd`**, and **now ≤ currentPeriodEnd**; otherwise limits are Free. Optional Stripe **retrieve** refreshes Mongo when the stored period is past but the row still looks active. Details: **`apps/backend/STRIPE_WEBHOOKS.md`**.
 
 ---
 

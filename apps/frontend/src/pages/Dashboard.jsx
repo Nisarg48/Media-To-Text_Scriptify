@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
+import axios from 'axios';
 import apiClient from '../api/client';
 
 const STATUS_CONFIG = {
@@ -32,6 +33,36 @@ const STATUS_FILTER_OPTIONS = [
 
 const PAGE_SIZE = 12;
 
+function localMonthRange(monthOffset = 0) {
+  const d = new Date();
+  const start = new Date(d.getFullYear(), d.getMonth() + monthOffset, 1, 0, 0, 0, 0);
+  const end = new Date(d.getFullYear(), d.getMonth() + monthOffset + 1, 1, 0, 0, 0, 0);
+  return { periodStart: start.toISOString(), periodEnd: end.toISOString() };
+}
+
+function localRangeFromDateInputs(fromYmd, toYmd) {
+  const [sy, sm, sd] = fromYmd.split('-').map(Number);
+  const [ey, em, ed] = toYmd.split('-').map(Number);
+  const start = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
+  const end = new Date(ey, em - 1, ed + 1, 0, 0, 0, 0);
+  return { periodStart: start.toISOString(), periodEnd: end.toISOString() };
+}
+
+function formatPeriodRangeLabel(periodStart, periodEnd) {
+  const s = new Date(periodStart);
+  const e = new Date(periodEnd);
+  const last = new Date(e.getTime() - 86400000);
+  if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return '';
+  return `${s.toLocaleDateString(undefined, { dateStyle: 'medium' })} – ${last.toLocaleDateString(undefined, { dateStyle: 'medium' })}`;
+}
+
+function toYmd(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function formatDate(dateStr) {
   const d = new Date(dateStr);
   return d.toLocaleDateString(undefined, { dateStyle: 'short' }) + ' ' + d.toLocaleTimeString(undefined, { timeStyle: 'short' });
@@ -44,6 +75,10 @@ function formatBytes(bytes) {
   return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
 }
 
+function isCanceledError(err) {
+  return axios.isCancel(err) || err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError';
+}
+
 function StatCard({ label, value, sub, accent }) {
   const accentMap = {
     green: 'border-l-emerald-400 bg-emerald-50',
@@ -51,6 +86,7 @@ function StatCard({ label, value, sub, accent }) {
     red: 'border-l-red-400 bg-red-50',
     slate: 'border-l-slate-300 bg-slate-50',
     blue: 'border-l-blue-400 bg-blue-50',
+    violet: 'border-l-violet-400 bg-violet-50',
   };
   return (
     <div className={`rounded-xl border border-slate-200 border-l-4 bg-white p-4 shadow-sm ${accentMap[accent] ?? accentMap.slate}`}>
@@ -61,73 +97,104 @@ function StatCard({ label, value, sub, accent }) {
   );
 }
 
-function UsageStats({ stats, loading }) {
+function QuotaStatCard({ subscription, dimmed }) {
+  const mediaCount = subscription?.mediaCount ?? 0;
+  const maxMedia = subscription?.maxMediaCount ?? 3;
+  const mediaPct = maxMedia > 0 ? Math.min(100, Math.round((mediaCount / maxMedia) * 100)) : 0;
+  const mediaDanger = mediaPct >= 90;
+  const mediaWarn = mediaPct >= 70;
+  const isPro = subscription?.plan === 'pro';
+  const retentionDays = subscription?.retentionDays ?? 15;
+
+  return (
+    <div className="relative flex h-full min-h-[5.5rem] flex-col overflow-hidden rounded-xl border border-slate-200 border-l-4 border-l-violet-400 bg-violet-50/80 p-4 shadow-sm">
+      <div className={dimmed ? 'pointer-events-none blur-sm opacity-40' : ''}>
+        <div className="mb-1 flex items-center justify-between gap-1">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Plan & quota</p>
+          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${isPro ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+            {isPro ? 'Pro' : 'Free'}
+          </span>
+        </div>
+        <p className={`text-sm font-bold tabular-nums text-slate-800 ${mediaDanger ? 'text-red-700' : mediaWarn ? 'text-amber-800' : ''}`}>
+          {mediaCount} / {maxMedia} files
+        </p>
+        <div className="mt-2 h-2 w-full flex-1 overflow-hidden rounded-full bg-white/80">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${mediaDanger ? 'bg-red-500' : mediaWarn ? 'bg-amber-400' : 'bg-emerald-500'}`}
+            style={{ width: `${mediaPct}%` }}
+          />
+        </div>
+        {!isPro && (
+          <RouterLink
+            to="/dashboard/billing"
+            className="mt-2 inline-block w-fit rounded-lg bg-emerald-500 px-2 py-1 text-[10px] font-semibold text-white shadow hover:bg-emerald-600"
+          >
+            Upgrade
+          </RouterLink>
+        )}
+        <p className="mt-1 text-[10px] leading-tight text-slate-400">
+          {retentionDays}-day retention per upload (not tied to the dashboard date filter)
+        </p>
+      </div>
+      {dimmed && (
+        <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/70 px-2 text-center">
+          <p className="text-[11px] font-medium leading-snug text-slate-600">
+            Quota applies to billing, not the date filter. Clear the date filter to view.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UsageStats({ stats, loading, quotaDimmed }) {
   if (loading) {
     return (
-      <div className="mb-6 space-y-3">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-20 animate-pulse rounded-xl bg-slate-100" />
+      <div className="mb-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-24 animate-pulse rounded-xl bg-slate-100" />
           ))}
         </div>
-        <div className="h-16 animate-pulse rounded-xl bg-slate-100" />
       </div>
     );
   }
   if (!stats) return null;
 
-  const { totalFiles, byStatus, storageBytesUsed, processingMinutes, subscription } = stats;
+  const { totalFiles, byStatus, storageBytesUsed, subscription } = stats;
   const inFlight = (byStatus?.PROCESSING ?? 0) + (byStatus?.UPLOADED ?? 0);
 
-  const minutesUsed = subscription?.minutesUsed ?? 0;
-  const minutesLimit = subscription?.minutesLimit ?? 30;
-  const pct = minutesLimit > 0 ? Math.min(100, Math.round((minutesUsed / minutesLimit) * 100)) : 0;
-  const danger = pct >= 90;
-  const warn = pct >= 70;
-  const isPro = subscription?.plan === 'pro';
-
   return (
-    <div className="mb-6 space-y-3">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
+    <div className="mb-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <StatCard label="Total files" value={totalFiles} accent="slate" />
         <StatCard label="Completed" value={byStatus?.COMPLETED ?? 0} accent="green" />
-        <StatCard label="In progress" value={inFlight} sub={inFlight > 0 ? 'Processing or queued' : undefined} accent="amber" />
+        <StatCard label="In progress" value={inFlight} sub={inFlight > 0 ? 'Queued / processing' : undefined} accent="amber" />
         <StatCard label="Failed" value={byStatus?.FAILED ?? 0} accent="red" />
-        <StatCard label="Storage used" value={formatBytes(storageBytesUsed)} sub={processingMinutes > 0 ? `${processingMinutes} min transcribed` : undefined} accent="blue" />
-      </div>
-
-      {/* Quota bar */}
-      <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-        <div className="flex-1 min-w-0">
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-              <span>Transcription quota</span>
-              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${isPro ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                {isPro ? 'Pro' : 'Free'}
-              </span>
-            </div>
-            <span className={`text-xs font-semibold tabular-nums ${danger ? 'text-red-600' : warn ? 'text-amber-600' : 'text-slate-600'}`}>
-              {minutesUsed} / {minutesLimit} min
-            </span>
-          </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${danger ? 'bg-red-500' : warn ? 'bg-amber-400' : 'bg-emerald-500'}`}
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-        </div>
-        {!isPro && (
-          <a href="/dashboard/billing" className="shrink-0 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white shadow transition hover:bg-emerald-600">
-            Upgrade
-          </a>
-        )}
+        <StatCard label="Storage used" value={formatBytes(storageBytesUsed)} accent="blue" />
+        <QuotaStatCard subscription={subscription} dimmed={quotaDimmed} />
       </div>
     </div>
   );
 }
 
+function buildAnalyticsParams(periodScope, periodStart, periodEnd) {
+  if (periodScope === 'all') {
+    return { periodScope: 'all' };
+  }
+  return { periodScope: 'range', periodStart, periodEnd };
+}
+
 export default function Dashboard() {
+  const initialRange = useMemo(() => localMonthRange(0), []);
+  const [periodScope, setPeriodScope] = useState('all');
+  const [periodStart, setPeriodStart] = useState(initialRange.periodStart);
+  const [periodEnd, setPeriodEnd] = useState(initialRange.periodEnd);
+  const [preset, setPreset] = useState('this');
+  const [customFrom, setCustomFrom] = useState(() => toYmd(new Date()));
+  const [customTo, setCustomTo] = useState(() => toYmd(new Date()));
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+
   const [media, setMedia] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -140,46 +207,107 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
-  useEffect(() => {
-    apiClient.get('/analytics/me')
-      .then(({ data }) => setStats(data))
-      .catch(() => {})
-      .finally(() => setStatsLoading(false));
+  const mediaRequestId = useRef(0);
+
+  const quotaDimmed = periodScope === 'range';
+
+  const clearAllFiltersAndClosePanel = useCallback(() => {
+    setFilterPanelOpen(false);
+    setPeriodScope('all');
+    setSearch('');
+    setStatusFilter('all');
+    setTypeFilter('all');
   }, []);
+
+  const applyThisMonth = useCallback(() => {
+    const r = localMonthRange(0);
+    setPeriodStart(r.periodStart);
+    setPeriodEnd(r.periodEnd);
+    setPreset('this');
+    setPeriodScope('range');
+    setFilterPanelOpen(false);
+  }, []);
+
+  const applyPrevMonth = useCallback(() => {
+    const r = localMonthRange(-1);
+    setPeriodStart(r.periodStart);
+    setPeriodEnd(r.periodEnd);
+    setPreset('prev');
+    setPeriodScope('range');
+    setFilterPanelOpen(false);
+  }, []);
+
+  const applyCustom = useCallback(() => {
+    if (!customFrom || !customTo || customFrom > customTo) return;
+    const r = localRangeFromDateInputs(customFrom, customTo);
+    setPeriodStart(r.periodStart);
+    setPeriodEnd(r.periodEnd);
+    setPreset('custom');
+    setPeriodScope('range');
+    setFilterPanelOpen(false);
+  }, [customFrom, customTo]);
+
+  useEffect(() => {
+    const ac = new AbortController();
+    queueMicrotask(() => {
+      if (!ac.signal.aborted) setStatsLoading(true);
+    });
+    const params = buildAnalyticsParams(periodScope, periodStart, periodEnd);
+    apiClient
+      .get('/analytics/me', { params, signal: ac.signal })
+      .then(({ data }) => setStats(data))
+      .catch((err) => {
+        if (!isCanceledError(err)) setStats(null);
+      })
+      .finally(() => {
+        if (!ac.signal.aborted) setStatsLoading(false);
+      });
+    return () => ac.abort();
+  }, [periodScope, periodStart, periodEnd]);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search.trim()), 300);
     return () => clearTimeout(t);
   }, [search]);
 
-  const fetchMedia = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const { data } = await apiClient.get('/media', {
-        params: {
-          q: searchDebounced || undefined,
-          status: statusFilter === 'all' ? undefined : statusFilter,
-          page,
-          limit: PAGE_SIZE,
-        },
+  useEffect(() => {
+    const ac = new AbortController();
+    const id = ++mediaRequestId.current;
+    queueMicrotask(() => {
+      if (!ac.signal.aborted && id === mediaRequestId.current) {
+        setLoading(true);
+        setError('');
+      }
+    });
+    const params = {
+      page,
+      limit: PAGE_SIZE,
+      ...buildAnalyticsParams(periodScope, periodStart, periodEnd),
+      ...(searchDebounced ? { q: searchDebounced } : {}),
+      ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
+    };
+    apiClient
+      .get('/media', { params, signal: ac.signal })
+      .then(({ data }) => {
+        if (id !== mediaRequestId.current) return;
+        setMedia(data.media || []);
+        setTotal(typeof data.total === 'number' ? data.total : (data.media || []).length);
+      })
+      .catch((err) => {
+        if (isCanceledError(err)) return;
+        if (id !== mediaRequestId.current) return;
+        setError(err.response?.data?.message || err.response?.data?.msg || 'Failed to load media.');
+      })
+      .finally(() => {
+        if (ac.signal.aborted || id !== mediaRequestId.current) return;
+        setLoading(false);
       });
-      setMedia(data.media || []);
-      setTotal(typeof data.total === 'number' ? data.total : (data.media || []).length);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load media.');
-    } finally {
-      setLoading(false);
-    }
-  }, [page, searchDebounced, statusFilter]);
+    return () => ac.abort();
+  }, [page, searchDebounced, statusFilter, periodScope, periodStart, periodEnd]);
 
   useEffect(() => {
-    fetchMedia();
-  }, [fetchMedia]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [searchDebounced, statusFilter]);
+    queueMicrotask(() => setPage(1));
+  }, [searchDebounced, statusFilter, periodScope, periodStart, periodEnd]);
 
   const filteredMedia = useMemo(() => {
     if (typeFilter === 'all') return media;
@@ -188,10 +316,122 @@ export default function Dashboard() {
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
+  const periodLabel = useMemo(() => {
+    if (periodScope === 'all') return 'All activity';
+    if (stats?.period?.start && stats?.period?.end) {
+      return formatPeriodRangeLabel(stats.period.start, stats.period.end);
+    }
+    return formatPeriodRangeLabel(periodStart, periodEnd);
+  }, [periodScope, stats, periodStart, periodEnd]);
+
+  const handleCloseDateFilterToggle = () => {
+    if (filterPanelOpen) {
+      clearAllFiltersAndClosePanel();
+    } else {
+      setFilterPanelOpen(true);
+    }
+  };
+
+  const periodToolbar = (
+    <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Dashboard period</p>
+          <p className="mt-0.5 text-sm font-medium text-slate-800">{periodLabel}</p>
+          <p className="mt-1 text-xs text-slate-400">
+            {periodScope === 'all'
+              ? 'Showing all of your media. Open the date filter to limit by range.'
+              : 'Stats and list match the selected range (completed by finish time; in-progress by upload time).'}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleCloseDateFilterToggle}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition ${
+              filterPanelOpen || periodScope === 'range'
+                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            {filterPanelOpen ? 'Close & clear filters' : 'Date filter'}
+          </button>
+          {periodScope === 'range' && !filterPanelOpen && (
+            <button
+              type="button"
+              onClick={() => {
+                setPeriodScope('all');
+              }}
+              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Clear date filter
+            </button>
+          )}
+        </div>
+      </div>
+
+      {filterPanelOpen && (
+        <div className="mt-4 border-t border-slate-100 pt-4">
+          <p className="mb-3 text-xs font-medium text-slate-500">
+            Pick a range below. Transcript quota stays hidden until you clear the date filter.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={applyThisMonth}
+              className={`rounded-lg px-3 py-2 text-sm font-medium transition ${preset === 'this' && periodScope === 'range' ? 'bg-emerald-500 text-white shadow' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+            >
+              This month
+            </button>
+            <button
+              type="button"
+              onClick={applyPrevMonth}
+              className={`rounded-lg px-3 py-2 text-sm font-medium transition ${preset === 'prev' && periodScope === 'range' ? 'bg-emerald-500 text-white shadow' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+            >
+              Previous month
+            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="date"
+                value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                aria-label="Custom range start"
+              />
+              <span className="text-slate-400">to</span>
+              <input
+                type="date"
+                value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)}
+                className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                aria-label="Custom range end"
+              />
+              <button
+                type="button"
+                onClick={applyCustom}
+                className={`rounded-lg px-3 py-2 text-sm font-medium transition ${preset === 'custom' && periodScope === 'range' ? 'bg-emerald-500 text-white shadow' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+              >
+                Apply range
+              </button>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={clearAllFiltersAndClosePanel}
+            className="mt-3 text-sm font-medium text-emerald-700 hover:underline"
+          >
+            Clear all filters & show all activity
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
   if (loading && media.length === 0 && !error) {
     return (
       <div className="animate-fade-in pb-8 pt-1">
-        <UsageStats stats={stats} loading={statsLoading} />
+        {periodToolbar}
+        <UsageStats stats={stats} loading={statsLoading} quotaDimmed={quotaDimmed} />
         <div className="flex min-h-[40vh] items-center justify-center">
           <p className="text-slate-500">Loading…</p>
         </div>
@@ -210,16 +450,23 @@ export default function Dashboard() {
   if (media.length === 0 && total === 0 && !searchDebounced && statusFilter === 'all') {
     return (
       <div className="animate-fade-in">
-        <UsageStats stats={stats} loading={statsLoading} />
+        {periodToolbar}
+        <UsageStats stats={stats} loading={statsLoading} quotaDimmed={quotaDimmed} />
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-lg sm:p-12">
-          <h2 className="text-xl font-semibold text-slate-800 sm:text-2xl">No media yet</h2>
-          <p className="mt-2 text-slate-600">Upload your first audio or video to get a transcript.</p>
-          <Link
+          <h2 className="text-xl font-semibold text-slate-800 sm:text-2xl">
+            {periodScope === 'all' ? 'No media yet' : 'No activity in this period'}
+          </h2>
+          <p className="mt-2 text-slate-600">
+            {periodScope === 'all'
+              ? 'Upload your first audio or video to get a transcript.'
+              : 'Nothing matches the selected dates. Try another range or clear the date filter.'}
+          </p>
+          <RouterLink
             to="/dashboard/upload"
             className="mt-6 inline-flex rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:bg-emerald-600 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
           >
             Upload media
-          </Link>
+          </RouterLink>
         </div>
       </div>
     );
@@ -227,7 +474,8 @@ export default function Dashboard() {
 
   return (
     <div className="animate-fade-in pb-8 pt-1">
-      <UsageStats stats={stats} loading={statsLoading} />
+      {periodToolbar}
+      <UsageStats stats={stats} loading={statsLoading} quotaDimmed={quotaDimmed} />
 
       <div className="mb-6 flex flex-col gap-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
@@ -314,7 +562,7 @@ export default function Dashboard() {
               const typeInfo = MEDIA_TYPE_LABELS[item.mediaType] || { label: item.mediaType, className: 'bg-slate-200 text-slate-700' };
               return (
                 <li key={item._id} className="animate-fade-in-up" style={{ animationDelay: `${i * 0.05}s`, animationFillMode: 'backwards' }}>
-                  <Link
+                  <RouterLink
                     to={`/media/${item._id}`}
                     className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:border-emerald-200 hover:shadow-md hover:scale-[1.01]"
                   >
@@ -330,7 +578,7 @@ export default function Dashboard() {
                     <span className={`mt-2 inline-block rounded-md px-2 py-0.5 text-xs font-medium ${statusInfo.className}`}>
                       {statusInfo.label}
                     </span>
-                  </Link>
+                  </RouterLink>
                 </li>
               );
             })}

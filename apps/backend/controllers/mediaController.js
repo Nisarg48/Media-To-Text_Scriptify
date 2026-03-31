@@ -1,5 +1,5 @@
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
-const { GetObjectCommand, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { GetObjectCommand, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { s3Client } = require('../config/storage');
 const { v4: uuidv4 } = require('uuid');
 const Media = require('../models/Media');
@@ -9,6 +9,8 @@ const Transcript = require('../models/Transcript');
 const Summary = require('../models/Summary');
 const mongoose = require('mongoose');
 const { resolveSubscription } = require('./subscriptionController');
+const { buildDashboardMediaMatch } = require('../utils/dashboardMediaQuery');
+const { deleteStoredObjectsForMedia } = require('../services/mediaStorageCleanup');
 
 // @route  POST /api/media/presigned-url
 // @desc   Get a presigned URL for uploading media
@@ -16,13 +18,23 @@ const { resolveSubscription } = require('./subscriptionController');
 const getUploadUrl = async (req, res) => {
     try {
         const userId = req.user.id;
-        const { fileName, fileType, sizeBytes, durationMs } = req.body;
+        const { fileName, fileType, sizeBytes } = req.body;
 
         if(!fileName || !fileType) {
             return res.status(400).json({ message: 'File name and type are required' });
         }
 
         const sub = await resolveSubscription(userId);
+
+        if (sub.mediaCount >= sub.maxMediaCount) {
+            return res.status(403).json({
+                message: `Your ${sub.plan === 'free' ? 'Free' : 'Pro'} plan allows ${sub.maxMediaCount} media file${sub.maxMediaCount !== 1 ? 's' : ''} at a time. Delete an existing file or upgrade to upload more.`,
+                code: 'MEDIA_SLOT_LIMIT',
+                plan: sub.plan,
+                mediaCount: sub.mediaCount,
+                maxMediaCount: sub.maxMediaCount,
+            });
+        }
 
         // Enforce plan file-size limit
         if (sizeBytes && typeof sizeBytes === 'number' && sizeBytes > 0) {
@@ -33,20 +45,6 @@ const getUploadUrl = async (req, res) => {
                     code: 'FILE_TOO_LARGE',
                     plan: sub.plan,
                     maxFileSizeMB: sub.maxFileSizeMB,
-                });
-            }
-        }
-
-        // Optional client-reported duration (browser metadata). Worker still enforces after ffprobe.
-        if (durationMs != null && typeof durationMs === 'number' && durationMs > 0) {
-            const maxMs = (sub.maxDurationMinutesPerFile || 30) * 60 * 1000;
-            if (durationMs > maxMs) {
-                const dm = (durationMs / 60000).toFixed(1);
-                return res.status(403).json({
-                    message: `This file is about ${dm} minutes long. Your ${sub.plan === 'free' ? 'Free' : 'Pro'} plan allows up to ${sub.maxDurationMinutesPerFile || 30} minutes per file.`,
-                    code: 'FILE_TOO_LONG',
-                    plan: sub.plan,
-                    maxDurationMinutesPerFile: sub.maxDurationMinutesPerFile || 30,
                 });
             }
         }
@@ -79,7 +77,6 @@ const finalizeUpload = async (req, res) => {
             mediaType, format,
             targetLanguageCode,
             sourceLanguageCode,
-            durationMs,
         } = req.body;
 
         if(!fileName || !fileKey || !mediaType || !format) {
@@ -95,29 +92,16 @@ const finalizeUpload = async (req, res) => {
             return res.status(400).json({ message: `Target language code '${targetLanguageCode}' is not supported` });
         }
 
-        // Enforce plan limits: minutes quota and parallel job cap
+        // Enforce plan limits: media slots, parallel job cap
         const sub = await resolveSubscription(req.user.id);
 
-        if (durationMs != null && typeof durationMs === 'number' && durationMs > 0) {
-            const maxMs = (sub.maxDurationMinutesPerFile || 30) * 60 * 1000;
-            if (durationMs > maxMs) {
-                const dm = (durationMs / 60000).toFixed(1);
-                return res.status(403).json({
-                    message: `This file is about ${dm} minutes long. Your ${sub.plan === 'free' ? 'Free' : 'Pro'} plan allows up to ${sub.maxDurationMinutesPerFile || 30} minutes per file.`,
-                    code: 'FILE_TOO_LONG',
-                    plan: sub.plan,
-                    maxDurationMinutesPerFile: sub.maxDurationMinutesPerFile || 30,
-                });
-            }
-        }
-
-        if (sub.minutesUsed >= sub.minutesLimit) {
+        if (sub.mediaCount >= sub.maxMediaCount) {
             return res.status(403).json({
-                message: `You have used all ${sub.minutesLimit} minutes on your ${sub.plan === 'free' ? 'Free' : 'Pro'} plan this period. Upgrade or wait for the next billing cycle.`,
-                code: 'QUOTA_EXCEEDED',
+                message: `Your ${sub.plan === 'free' ? 'Free' : 'Pro'} plan allows ${sub.maxMediaCount} media file${sub.maxMediaCount !== 1 ? 's' : ''} at a time. Delete an existing file or upgrade to upload more.`,
+                code: 'MEDIA_SLOT_LIMIT',
                 plan: sub.plan,
-                minutesUsed: sub.minutesUsed,
-                minutesLimit: sub.minutesLimit,
+                mediaCount: sub.mediaCount,
+                maxMediaCount: sub.maxMediaCount,
             });
         }
 
@@ -136,6 +120,7 @@ const finalizeUpload = async (req, res) => {
         }
 
         const mode = sourceLanguageCode ? 'FORCED' : 'AUTO';
+        const retentionMs = (sub.retentionDays ?? 15) * 86400000;
 
         const newMedia = new Media({
             mediaUploadedBy: req.user.id,
@@ -146,6 +131,7 @@ const finalizeUpload = async (req, res) => {
             sourceLanguageMode: mode,
             sourceLanguageCode: sourceLanguageCode || null,
             targetLanguageCode,
+            retentionExpiresAt: new Date(Date.now() + retentionMs),
             storage: {
                 bucket: process.env.STORAGE_BUCKET_NAME,
                 key: fileKey,
@@ -162,7 +148,6 @@ const finalizeUpload = async (req, res) => {
             fileKey: fileKey,
             targetLanguageCode,
             sourceLanguageCode,
-            maxDurationMinutesPerFile: sub.maxDurationMinutesPerFile || 30,
         };
 
         await sendToQueue(taskPayload);
@@ -189,32 +174,52 @@ const getUserMedia = async (req, res) => {
             limit = '20',
         } = req.query;
 
-        const query = {
-            mediaUploadedBy: req.user.id,
-            $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
-        };
+        const built = buildDashboardMediaMatch(req.query, req.user.id);
+        if (built.error) {
+            return res.status(built.error.status).json({ message: built.error.msg });
+        }
+
+        const andClauses = [...built.match.$and];
 
         if (q && String(q).trim()) {
-            query.filename = { $regex: String(q).trim(), $options: 'i' };
+            andClauses.push({ filename: { $regex: String(q).trim(), $options: 'i' } });
         }
 
         if (status && status !== 'all') {
-            query.status = status;
+            andClauses.push({ status });
         }
+
+        const matchQuery = { $and: andClauses };
 
         const pageNum = Math.max(1, parseInt(page, 10) || 1);
         const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
         const skip = (pageNum - 1) * limitNum;
 
-        const [mediaList, total] = await Promise.all([
-            Media.find(query)
-                .sort({ createdAt: -1 })
-                .skip(skip)
-                .limit(limitNum)
-                .select('-storage'),
-            Media.countDocuments(query),
+        // Use aggregation $match (same as analytics) so nested $and/$or behaves like dashboard stats.
+        const [facetResult] = await Media.aggregate([
+            { $match: matchQuery },
+            {
+                $facet: {
+                    data: [
+                        { $sort: { createdAt: -1 } },
+                        { $skip: skip },
+                        { $limit: limitNum },
+                        {
+                            $project: {
+                                storage: 0,
+                                derivedAudio: 0,
+                            },
+                        },
+                    ],
+                    total: [{ $count: 'n' }],
+                },
+            },
         ]);
 
+        const mediaList = facetResult?.data ?? [];
+        const total = facetResult?.total?.[0]?.n ?? 0;
+
+        res.set('Cache-Control', 'private, no-store');
         res.status(200).json({
             msg: 'Media list fetched successfully',
             media: mediaList,
@@ -283,32 +288,7 @@ const deleteMediaById = async (req, res) => {
             return res.status(400).json({ msg: 'Media is already deleted' });
         }
 
-        // Delete the media file from MinIO (soft fail on error)
-        if (media.storage && media.storage.key) {
-            const deleteVideoCommand = new DeleteObjectCommand({
-                Bucket: process.env.STORAGE_BUCKET_NAME,
-                Key: media.storage.key,
-            });
-            try {
-                await s3Client.send(deleteVideoCommand);
-            } catch (error) {
-                console.warn(`MinIO Video Delete Warning: Could not delete ${media.storage.key}`, error.message);
-            }
-        }
-
-        // Delete transcript JSON from MinIO; keep Transcript document in DB
-        const transcript = await Transcript.findOne({ mediaId: media._id });
-        if (transcript && transcript.jsonFile && transcript.jsonFile.key) {
-            const deleteJsonCommand = new DeleteObjectCommand({
-                Bucket: process.env.STORAGE_BUCKET_NAME,
-                Key: transcript.jsonFile.key,
-            });
-            try {
-                await s3Client.send(deleteJsonCommand);
-            } catch (error) {
-                console.warn(`MinIO JSON Delete Warning: Could not delete ${transcript.jsonFile.key}`, error.message);
-            }
-        }
+        await deleteStoredObjectsForMedia(media);
 
         // Mark media as deleted in DB (do not remove Media or Transcript documents)
         media.deletedAt = new Date();

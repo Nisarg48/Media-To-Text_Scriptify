@@ -2,7 +2,7 @@ const Stripe = require('stripe');
 const mongoose = require('mongoose');
 const Subscription = require('../models/Subscription');
 const Media = require('../models/Media');
-const { PLANS, getPlanLimits } = require('../config/plans');
+const { getPlanLimits } = require('../config/plans');
 const { logSubscriptionEvent } = require('../services/subscriptionAuditService');
 
 /** Build a Stripe client only when the secret key is configured. */
@@ -12,41 +12,89 @@ function getStripe() {
     return new Stripe(key, { apiVersion: '2024-12-18.acacia' });
 }
 
+const PAID_STATUSES = new Set(['active', 'trialing']);
+
 /**
- * Minutes consumed in the billing period — sticky monthly pool: counts jobs that **finished**
- * in [start, end), even if the user later deletes the media (deleting does not refund minutes).
+ * Pure entitlement: Pro limits only when plan is pro, Stripe-like status allows paid access,
+ * and current period has not ended. See apps/backend/STRIPE_WEBHOOKS.md for webhook sync.
+ * @param {{ plan?: string, status?: string, currentPeriodEnd?: Date|null }} sub
+ * @param {Date} [now]
+ * @returns {{ effectivePlan: 'free'|'pro', reason: string }}
  */
-async function getMinutesUsedInPeriod(userId, periodStart, periodEnd) {
-    const start = periodStart ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-    const end = periodEnd ?? new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1);
+function getEffectiveSubscriptionState(sub, now = new Date()) {
+    const plan = sub.plan || 'free';
+    const status = sub.status || 'active';
+    const periodEnd = sub.currentPeriodEnd != null ? new Date(sub.currentPeriodEnd) : null;
 
-    const uid = mongoose.Types.ObjectId.createFromHexString(userId.toString());
+    if (plan === 'free') {
+        return { effectivePlan: 'free', reason: 'plan_free' };
+    }
+    if (status === 'canceled' || status === 'past_due' || status === 'incomplete') {
+        return { effectivePlan: 'free', reason: `status_${status}` };
+    }
+    if (plan !== 'pro') {
+        return { effectivePlan: 'free', reason: 'unknown_plan' };
+    }
+    if (!PAID_STATUSES.has(status)) {
+        return { effectivePlan: 'free', reason: `status_${status}` };
+    }
+    if (!periodEnd || now > periodEnd) {
+        return { effectivePlan: 'free', reason: 'period_expired_or_missing' };
+    }
+    return { effectivePlan: 'pro', reason: 'active_period' };
+}
 
-    const result = await Media.aggregate([
-        {
-            $match: {
-                mediaUploadedBy: uid,
-                status: 'COMPLETED',
-                lengthMs: { $gt: 0 },
-                $or: [
-                    { completedAt: { $gte: start, $lt: end } },
-                    {
-                        $or: [{ completedAt: null }, { completedAt: { $exists: false } }],
-                        updatedAt: { $gte: start, $lt: end },
-                    },
-                ],
+/**
+ * If Mongo still shows an active Pro period but currentPeriodEnd is in the past, refresh from Stripe
+ * so webhooks and DB stay aligned (handles missed events and manual DB edits).
+ */
+async function reconcileStaleStripeSubscription(sub) {
+    const stripe = getStripe();
+    if (!stripe || !sub?.stripeSubscriptionId) return sub;
+
+    const now = new Date();
+    const pe = sub.currentPeriodEnd != null ? new Date(sub.currentPeriodEnd) : null;
+    const looksStale =
+        sub.plan === 'pro' &&
+        PAID_STATUSES.has(sub.status) &&
+        pe != null &&
+        now > pe;
+
+    if (!looksStale) return sub;
+
+    try {
+        const stripeSub = await stripe.subscriptions.retrieve(sub.stripeSubscriptionId);
+        const plan = stripeSub.status === 'active' || stripeSub.status === 'trialing' ? 'pro' : 'free';
+        const updated = await Subscription.findOneAndUpdate(
+            { _id: sub._id },
+            {
+                status: stripeSub.status,
+                plan,
+                currentPeriodStart: new Date(stripeSub.current_period_start * 1000),
+                currentPeriodEnd: new Date(stripeSub.current_period_end * 1000),
+                cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
             },
-        },
-        { $group: { _id: null, totalMs: { $sum: '$lengthMs' } } },
-    ]);
+            { new: true }
+        );
+        return updated || sub;
+    } catch (err) {
+        console.error('subscriptionController.reconcileStaleStripeSubscription:', err.message);
+        return sub;
+    }
+}
 
-    return Math.round((result[0]?.totalMs ?? 0) / 60000);
+/** Non-deleted media rows for the user (dashboard list + slot limits). */
+async function countActiveMedia(userId) {
+    const uid = mongoose.Types.ObjectId.createFromHexString(String(userId));
+    return Media.countDocuments({
+        mediaUploadedBy: uid,
+        $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
+    });
 }
 
 /**
  * Get or synthesise a free subscription record for a user.
- * Returns { plan, status, minutesUsed, minutesLimit, maxFileSizeMB, maxParallelJobs,
- *           currentPeriodStart, currentPeriodEnd, cancelAtPeriodEnd, stripeCustomerId }
+ * Returns plan limits, usage, mediaCount / maxMediaCount / retentionDays, etc.
  */
 async function resolveSubscription(userId) {
     let sub = await Subscription.findOne({ userId });
@@ -57,15 +105,15 @@ async function resolveSubscription(userId) {
         const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
         const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
         const limits = getPlanLimits('free');
-        const minutesUsed = await getMinutesUsedInPeriod(userId, periodStart, periodEnd);
+        const mediaCount = await countActiveMedia(userId);
         return {
             plan: 'free',
             status: 'active',
-            minutesUsed,
-            minutesLimit: limits.minutesPerMonth,
             maxFileSizeMB: limits.maxFileSizeMB,
-            maxDurationMinutesPerFile: limits.maxDurationMinutesPerFile,
             maxParallelJobs: limits.maxParallelJobs,
+            maxMediaCount: limits.maxMediaCount,
+            retentionDays: limits.retentionDays,
+            mediaCount,
             currentPeriodStart: periodStart,
             currentPeriodEnd: periodEnd,
             cancelAtPeriodEnd: false,
@@ -73,20 +121,45 @@ async function resolveSubscription(userId) {
         };
     }
 
-    const effectivePlan = (sub.status === 'canceled' || sub.status === 'past_due') ? 'free' : sub.plan;
-    const limits = getPlanLimits(effectivePlan);
-    const periodStart = sub.currentPeriodStart ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-    const periodEnd = sub.currentPeriodEnd ?? new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1);
-    const minutesUsed = await getMinutesUsedInPeriod(userId, periodStart, periodEnd);
+    sub = await reconcileStaleStripeSubscription(sub);
+
+    const now = new Date();
+    const { effectivePlan } = getEffectiveSubscriptionState(sub, now);
+
+    const calendarStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const calendarEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    if (effectivePlan === 'free') {
+        const limits = getPlanLimits('free');
+        const mediaCount = await countActiveMedia(userId);
+        return {
+            plan: 'free',
+            status: sub.status,
+            maxFileSizeMB: limits.maxFileSizeMB,
+            maxParallelJobs: limits.maxParallelJobs,
+            maxMediaCount: limits.maxMediaCount,
+            retentionDays: limits.retentionDays,
+            mediaCount,
+            currentPeriodStart: calendarStart,
+            currentPeriodEnd: calendarEnd,
+            cancelAtPeriodEnd: sub.cancelAtPeriodEnd ?? false,
+            stripeCustomerId: sub.stripeCustomerId ?? null,
+        };
+    }
+
+    const limits = getPlanLimits('pro');
+    const periodStart = sub.currentPeriodStart ?? calendarStart;
+    const periodEnd = sub.currentPeriodEnd ?? calendarEnd;
+    const mediaCount = await countActiveMedia(userId);
 
     return {
-        plan: effectivePlan,
+        plan: 'pro',
         status: sub.status,
-        minutesUsed,
-        minutesLimit: limits.minutesPerMonth,
         maxFileSizeMB: limits.maxFileSizeMB,
-        maxDurationMinutesPerFile: limits.maxDurationMinutesPerFile,
         maxParallelJobs: limits.maxParallelJobs,
+        maxMediaCount: limits.maxMediaCount,
+        retentionDays: limits.retentionDays,
+        mediaCount,
         currentPeriodStart: periodStart,
         currentPeriodEnd: periodEnd,
         cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
@@ -349,4 +422,7 @@ module.exports = {
     createPortalSession,
     handleWebhook,
     resolveSubscription,
+    getEffectiveSubscriptionState,
+    reconcileStaleStripeSubscription,
+    countActiveMedia,
 };

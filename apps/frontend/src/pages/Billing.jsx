@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import apiClient from '../api/client';
 
@@ -45,12 +45,41 @@ export default function Billing() {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    apiClient.get('/subscriptions/me')
+  const loadSub = useCallback((opts = {}) => {
+    const { silent } = opts;
+    if (!silent) setError('');
+    return apiClient
+      .get('/subscriptions/me')
       .then(({ data }) => setSub(data))
-      .catch(() => setError('Failed to load subscription info.'))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        if (!silent) setError('Failed to load subscription info.');
+      });
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    loadSub()
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadSub]);
+
+  useEffect(() => {
+    const onFocus = () => loadSub({ silent: true });
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') loadSub({ silent: true });
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [loadSub]);
 
   async function handleUpgrade() {
     setActionLoading(true);
@@ -142,26 +171,33 @@ export default function Billing() {
         {sub && (
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <p className="mb-4 text-xs font-medium uppercase tracking-wide text-slate-400">
-              Usage this period
+              Your plan
             </p>
             <div className="space-y-5">
               <QuotaBar
-                label="Transcription minutes"
-                used={sub.minutesUsed ?? 0}
-                limit={sub.minutesLimit ?? 30}
+                label="Media files (saved)"
+                used={sub.mediaCount ?? 0}
+                limit={sub.maxMediaCount ?? 3}
               />
               <p className="text-xs text-slate-400">
-                Usage is counted when a job completes. Deleting media does not refund minutes for the current period.
+                After {sub.retentionDays ?? 15} days, uploads are removed from storage and marked deleted automatically.
               </p>
             </div>
-            <div className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+            <p className="mb-2 mt-5 text-xs font-medium uppercase tracking-wide text-slate-400">
+              Plan limits
+            </p>
+            <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                <p className="text-xs text-slate-400">Max media</p>
+                <p className="font-semibold text-slate-700">{sub.maxMediaCount ?? 3} files</p>
+              </div>
               <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
                 <p className="text-xs text-slate-400">Max file size</p>
                 <p className="font-semibold text-slate-700">{sub.maxFileSizeMB >= 1024 ? `${sub.maxFileSizeMB / 1024} GB` : `${sub.maxFileSizeMB} MB`}</p>
               </div>
               <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                <p className="text-xs text-slate-400">Max length / file</p>
-                <p className="font-semibold text-slate-700">Up to {sub.maxDurationMinutesPerFile ?? 30} min</p>
+                <p className="text-xs text-slate-400">Retention</p>
+                <p className="font-semibold text-slate-700">{sub.retentionDays ?? 15} days</p>
               </div>
               <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
                 <p className="text-xs text-slate-400">Parallel jobs</p>
@@ -196,7 +232,9 @@ export default function Billing() {
             <div className="space-y-3">
               <div>
                 <p className="font-semibold text-slate-800">Upgrade to Pro — $9.99/month</p>
-                <p className="mt-1 text-sm text-slate-500">300 minutes, 2 GB files, 10 parallel jobs, priority processing.</p>
+                <p className="mt-1 text-sm text-slate-500">
+                  10 media files, 800 MB per file, 30-day retention, 10 parallel jobs, priority processing.
+                </p>
               </div>
               <button
                 type="button"

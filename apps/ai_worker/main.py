@@ -291,15 +291,6 @@ def process_message(ch, method, properties, body):
         # Get exact media length using ffprobe
         media_length_ms = get_media_length(local_raw_path)
 
-        max_dur_min = float(message.get("maxDurationMinutesPerFile") or 30)
-        max_ms = max_dur_min * 60 * 1000
-        if media_length_ms > max_ms:
-            current_stage = "DURATION_EXCEEDS_PLAN"
-            raise ValueError(
-                f"This media is too long (~{media_length_ms / 60000:.1f} min). "
-                f"Your plan allows up to {int(max_dur_min)} minutes per file."
-            )
-
         # Extract Audio
         current_stage = "EXTRACTING_AUDIO"
         extract_audio(local_raw_path, local_audio_path)

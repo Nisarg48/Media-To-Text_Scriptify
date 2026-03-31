@@ -22,7 +22,7 @@ export default function PricingSection({ compact = false, className = '' }) {
             Simple, transparent pricing
           </h2>
           <p className="mt-3 text-lg text-slate-500">
-            Start free. Upgrade when you need more. Monthly minutes are tracked when transcription completes.
+            Start free. Upgrade when you need more storage, retention, and capacity.
           </p>
         </div>
       )}
