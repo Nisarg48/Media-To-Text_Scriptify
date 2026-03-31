@@ -17,10 +17,10 @@ function formatDate(dateStr) {
 
 function TableSkeleton() {
     return [...Array(5)].map((_, i) => (
-        <tr key={i} className="border-b border-slate-100">
+        <tr key={i} className="border-b border-surface-border">
             {[200, 120, 80, 160, 100, 90].map((w, j) => (
                 <td key={j} className="px-4 py-3">
-                    <div className="h-4 animate-pulse rounded bg-slate-100" style={{ width: w }} />
+                    <div className="h-4 animate-pulse rounded bg-surface-muted/60" style={{ width: w }} />
                 </td>
             ))}
         </tr>
@@ -46,44 +46,41 @@ export default function AdminJobs() {
     const processingCount = jobs.filter((j) => j.status === 'PROCESSING').length;
 
     return (
-        <div className="animate-fade-in space-y-5">
-            {/* Header */}
+        <div className="animate-fade-in space-y-6">
             <div>
-                <h1 className="text-xl font-bold text-slate-800 sm:text-2xl">Jobs</h1>
-                <p className="mt-0.5 text-sm text-slate-500">
+                <h1 className="text-h3 font-bold text-content sm:text-h2">Jobs</h1>
+                <p className="mt-2 text-small text-content-muted">
                     {loading ? 'Loading…' : `${failedCount} failed · ${processingCount} processing`}
                 </p>
             </div>
 
-            {/* Summary chips */}
             {!loading && (failedCount > 0 || processingCount > 0) && (
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-4">
                     {failedCount > 0 && (
-                        <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5">
+                        <div className="flex items-center gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3">
                             <span className="h-2 w-2 rounded-full bg-red-400" />
-                            <span className="text-sm font-medium text-red-700">{failedCount} failed job{failedCount !== 1 ? 's' : ''}</span>
+                            <span className="text-small font-medium text-red-200">{failedCount} failed job{failedCount !== 1 ? 's' : ''}</span>
                         </div>
                     )}
                     {processingCount > 0 && (
-                        <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5">
+                        <div className="flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3">
                             <span className="h-2 w-2 animate-pulse rounded-full bg-amber-400" />
-                            <span className="text-sm font-medium text-amber-700">{processingCount} still processing</span>
+                            <span className="text-small font-medium text-amber-200">{processingCount} still processing</span>
                         </div>
                     )}
                 </div>
             )}
 
-            {/* Filter */}
-            <div className="flex w-fit gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 shadow-sm">
+            <div className="flex w-fit gap-2 rounded-xl border border-surface-border bg-surface-muted/40 p-2 shadow-sm">
                 {['all', 'FAILED', 'PROCESSING'].map((f) => (
                     <button
                         key={f}
                         type="button"
                         onClick={() => setFilter(f)}
-                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-150 ${
+                        className={`rounded-lg px-4 py-2 text-xs font-semibold transition-all duration-150 ${
                             filter === f
-                                ? 'bg-emerald-500 text-white shadow-sm'
-                                : 'text-slate-500 hover:bg-white hover:text-slate-800 hover:shadow-sm'
+                                ? 'bg-accent text-accent-foreground shadow-glow-sm'
+                                : 'text-content-muted hover:bg-surface hover:text-content'
                         }`}
                     >
                         {f === 'all' ? 'All' : f === 'FAILED' ? 'Failed' : 'Processing'}
@@ -92,31 +89,30 @@ export default function AdminJobs() {
             </div>
 
             {error && (
-                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-small text-red-200">
                     {error}
                 </div>
             )}
 
-            {/* Table */}
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-2xl border border-surface-border bg-surface/90 shadow-glass backdrop-blur-xl">
                 <div className="overflow-x-auto">
-                    <table className="w-full min-w-[560px] text-sm">
+                    <table className="admin-data-table w-full min-w-[560px] text-small">
                         <thead>
-                            <tr className="border-b border-slate-100 bg-slate-50/60">
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Filename</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Owner</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Status</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Error</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Stage</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Updated</th>
+                            <tr className="border-b border-surface-border">
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-content-subtle">Filename</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-content-subtle">Owner</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-content-subtle">Status</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-content-subtle">Error</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-content-subtle">Stage</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-content-subtle">Updated</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y divide-surface-border">
                             {loading ? (
                                 <TableSkeleton />
                             ) : filtered.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
+                                    <td colSpan={6} className="px-4 py-12 text-center text-content-subtle">
                                         {jobs.length === 0
                                             ? 'No active jobs — all clear!'
                                             : 'No jobs match the current filter'}
@@ -126,53 +122,53 @@ export default function AdminJobs() {
                                 filtered.map((job, i) => (
                                     <tr
                                         key={job._id}
-                                        className="animate-fade-in-up group transition-colors hover:bg-slate-50/80"
+                                        className="animate-fade-in-up group transition-colors hover:bg-surface-muted/30"
                                         style={{ animationDelay: `${i * 0.03}s`, animationFillMode: 'backwards' }}
                                     >
                                         <td className="max-w-[200px] px-4 py-3">
                                             <Link
                                                 to={`/admin/media/${job._id}`}
-                                                className="block truncate font-medium text-slate-700 transition-colors hover:text-emerald-600"
+                                                className="block truncate font-medium text-content transition-colors hover:text-accent"
                                                 title={job.filename}
                                             >
                                                 {job.filename}
                                             </Link>
                                         </td>
-                                        <td className="px-4 py-3 text-slate-500">
-                                            {job.mediaUploadedBy?.name || <span className="italic text-slate-400">—</span>}
+                                        <td className="px-4 py-3 text-content-muted">
+                                            {job.mediaUploadedBy?.name || <span className="italic text-content-subtle">—</span>}
                                         </td>
                                         <td className="px-4 py-3">
                                             {job.status === 'FAILED' ? (
-                                                <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-600">
-                                                    <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
+                                                <span className="inline-flex items-center gap-2 rounded-full bg-red-500/20 px-3 py-1 text-xs font-medium text-red-200">
+                                                    <span className="h-2 w-2 rounded-full bg-red-400" />
                                                     Failed
                                                 </span>
                                             ) : (
-                                                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">
-                                                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
+                                                <span className="inline-flex items-center gap-2 rounded-full bg-amber-500/20 px-3 py-1 text-xs font-medium text-amber-200">
+                                                    <span className="h-2 w-2 animate-pulse rounded-full bg-amber-400" />
                                                     Processing
                                                 </span>
                                             )}
                                         </td>
                                         <td className="max-w-[220px] px-4 py-3">
                                             {job.errorDetails?.message ? (
-                                                <span className="line-clamp-2 text-xs leading-relaxed text-red-600" title={job.errorDetails.message}>
+                                                <span className="line-clamp-2 text-xs leading-relaxed text-red-300" title={job.errorDetails.message}>
                                                     {job.errorDetails.message}
                                                 </span>
                                             ) : (
-                                                <span className="text-xs italic text-slate-400">—</span>
+                                                <span className="text-xs italic text-content-subtle">—</span>
                                             )}
                                         </td>
                                         <td className="px-4 py-3">
                                             {job.errorDetails?.stage ? (
-                                                <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-600">
+                                                <span className="rounded-md bg-surface-muted px-2 py-1 font-mono text-xs text-content-muted">
                                                     {job.errorDetails.stage}
                                                 </span>
                                             ) : (
-                                                <span className="text-xs text-slate-400">—</span>
+                                                <span className="text-xs text-content-subtle">—</span>
                                             )}
                                         </td>
-                                        <td className="px-4 py-3 tabular-nums text-slate-400">
+                                        <td className="px-4 py-3 tabular-nums text-content-subtle">
                                             {formatDate(job.updatedAt)}
                                         </td>
                                     </tr>

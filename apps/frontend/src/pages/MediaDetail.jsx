@@ -8,11 +8,11 @@ import ProcessingTimeline from '../components/ProcessingTimeline';
 import SimpleVideoPlayer from '../components/SimpleVideoPlayer';
 
 const STATUS_CONFIG = {
-  UPLOADING: { label: 'Uploading', className: 'bg-slate-200 text-slate-700' },
-  UPLOADED: { label: 'Queued', className: 'bg-slate-200 text-slate-700' },
-  PROCESSING: { label: 'Processing', className: 'bg-amber-100 text-amber-800' },
-  COMPLETED: { label: 'Done', className: 'bg-emerald-100 text-emerald-800' },
-  FAILED: { label: 'Failed', className: 'bg-red-100 text-red-700' },
+  UPLOADING: { label: 'Uploading', className: 'border border-slate-500/40 bg-slate-700/50 text-slate-200' },
+  UPLOADED: { label: 'Queued', className: 'border border-slate-500/40 bg-slate-700/50 text-slate-200' },
+  PROCESSING: { label: 'Processing', className: 'border border-amber-500/35 bg-amber-500/15 text-amber-200' },
+  COMPLETED: { label: 'Done', className: 'border border-accent/40 bg-accent-muted text-accent' },
+  FAILED: { label: 'Failed', className: 'border border-red-500/35 bg-red-500/15 text-red-300' },
 };
 
 const POLL_INTERVAL_MS = 3000;
@@ -360,23 +360,23 @@ export default function MediaDetail() {
   if (loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
-        <p className="text-slate-500">Loading…</p>
+        <p className="text-content-muted">Loading…</p>
       </div>
     );
   }
 
   if (error && !media) {
     return (
-      <div className="animate-fade-in rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+      <div className="animate-fade-in rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-red-200">
         {error}
-        <Link to="/dashboard" className="ml-2 font-medium text-emerald-600 underline hover:text-emerald-700">Back to dashboard</Link>
+        <Link to="/dashboard" className="ml-2 font-medium text-accent underline hover:brightness-125">Back to dashboard</Link>
       </div>
     );
   }
 
   if (!media) return null;
 
-  const statusInfo = STATUS_CONFIG[media.status] || { label: media.status, className: 'bg-slate-200 text-slate-700' };
+  const statusInfo = STATUS_CONFIG[media.status] || { label: media.status, className: 'border border-slate-500/40 bg-slate-700/50 text-slate-200' };
   const isVideo = media.mediaType === 'VIDEO';
   const canShowPlayer = media.status === 'COMPLETED' && playbackUrl;
   const showTimeline = ['UPLOADING', 'UPLOADED', 'PROCESSING'].includes(media.status);
@@ -384,47 +384,47 @@ export default function MediaDetail() {
     || (media.errorDetails?.message ? getFriendlyErrorMessage(media.errorDetails.message) : null);
 
   return (
-    <div className="mx-auto max-w-7xl animate-fade-in pb-12">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+    <div className="mx-auto max-w-7xl animate-fade-in space-y-10 pb-12">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <Link to="/dashboard" className="text-sm font-medium text-slate-500 transition hover:text-emerald-600">← Dashboard</Link>
-          <h1 className="mt-1 truncate text-xl font-bold text-slate-800 sm:text-2xl" title={media.filename}>
+          <Link to="/dashboard" className="text-small font-medium text-content-subtle transition hover:text-accent">← Dashboard</Link>
+          <h1 className="mt-2 truncate text-h3 font-bold text-content sm:text-h2" title={media.filename}>
             {media.filename}
           </h1>
-          <span className={`mt-2 inline-block rounded-md px-2 py-0.5 text-xs font-medium ${statusInfo.className}`}>
+          <span className={`mt-2 inline-block rounded-md px-2 py-1 text-xs font-medium ${statusInfo.className}`}>
             {statusInfo.label}
           </span>
         </div>
       </div>
 
       {showTimeline && (
-        <div className="mb-6">
+        <div>
           <ProcessingTimeline
             status={media.status}
             retryAttempt={media.errorDetails?.attempt}
           />
           {media.status === 'PROCESSING' && media.errorDetails?.attempt === 2 && (
-            <p className="mt-2 text-sm text-amber-700">
-              We're retrying (attempt 2). This may take a moment.
+            <p className="mt-2 text-small text-amber-200">
+              We&apos;re retrying (attempt 2). This may take a moment.
             </p>
           )}
         </div>
       )}
 
       {media.status === 'FAILED' && (errorMessageForUser || media.errorDetails?.message) && (
-        <div className="mb-6 animate-fade-in rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm">
-          <p className="text-sm font-medium text-red-800">{errorMessageForUser}</p>
+        <div className="animate-fade-in rounded-xl border border-red-500/40 bg-red-500/10 p-4 shadow-glass">
+          <p className="text-small font-medium text-red-200">{errorMessageForUser}</p>
           {media.errorDetails?.message && (
             <>
               <button
                 type="button"
                 onClick={() => setShowTechnicalError((s) => !s)}
-                className="mt-2 text-xs font-medium text-red-600 underline hover:text-red-700"
+                className="mt-2 text-xs font-medium text-red-300 underline hover:text-red-200"
               >
                 {showTechnicalError ? 'Hide technical details' : 'Show technical details'}
               </button>
               {showTechnicalError && (
-                <pre className="mt-2 overflow-x-auto rounded bg-red-100/50 p-2 text-xs text-red-700">
+                <pre className="mt-2 overflow-x-auto rounded bg-canvas/80 p-2 text-xs text-red-200">
                   {media.errorDetails.message}
                 </pre>
               )}
@@ -435,27 +435,27 @@ export default function MediaDetail() {
 
       {/* Processing: static placeholder only (no video = no reload) */}
       {!canShowPlayer && (
-        <div className="mb-6 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 p-2 shadow-sm">
-          <div className="flex aspect-video w-full flex-col items-center justify-center rounded-lg bg-gradient-to-br from-slate-200 to-slate-300">
-            <div className="text-slate-500 transition transform duration-300 ease-out" style={{ fontSize: '3rem' }} aria-hidden>
+        <div className="overflow-hidden rounded-xl border border-surface-border bg-surface-muted/40 p-2 shadow-glass">
+          <div className="flex aspect-video w-full flex-col items-center justify-center rounded-lg bg-gradient-to-br from-canvas-elevated to-slate-800/80">
+            <div className="text-content-muted transition transform duration-300 ease-out" style={{ fontSize: '3rem' }} aria-hidden>
               {isVideo ? '🎬' : '🎵'}
             </div>
-            <p className="mt-3 text-sm font-medium text-slate-600">
+            <p className="mt-4 text-small font-medium text-content-muted">
               {media.status === 'COMPLETED'
                 ? 'Loading playback…'
                 : isVideo
                   ? 'Video will be available when processing is complete'
                   : 'Audio will be available when processing is complete'}
             </p>
-            <p className="mt-1 text-xs text-slate-500">No preview while processing — avoids reload issues</p>
+            <p className="mt-2 text-xs text-content-subtle">No preview while processing — avoids reload issues</p>
           </div>
         </div>
       )}
 
       {/* Completed: video left + captions; transcript timeline right (editable in place) */}
       {canShowPlayer && (
-        <div className="mb-6 grid gap-6 lg:grid-cols-[1fr,400px]">
-          <div className="overflow-hidden rounded-xl border border-slate-200 shadow-lg">
+        <div className="grid gap-8 lg:grid-cols-[1fr,400px]">
+          <div className="overflow-hidden rounded-xl border border-surface-border shadow-glass">
             {isVideo ? (
               <SimpleVideoPlayer
                 src={playbackUrl}
@@ -466,7 +466,7 @@ export default function MediaDetail() {
                 playbackRef={playbackMediaRef}
               />
             ) : (
-              <div className="rounded-xl border border-slate-200 bg-slate-900">
+              <div className="rounded-xl border border-surface-border bg-canvas">
                 <audio
                   ref={playbackMediaRef}
                   controls
@@ -480,14 +480,14 @@ export default function MediaDetail() {
             )}
           </div>
 
-          <div className="flex max-h-[28rem] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
-            <div className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Transcript</span>
+          <div className="flex max-h-[28rem] flex-col overflow-hidden rounded-xl border border-surface-border bg-surface/90 shadow-glass backdrop-blur-xl">
+            <div className="flex shrink-0 items-center justify-between border-b border-surface-border bg-surface-muted/50 px-4 py-3">
+              <span className="text-xs font-semibold uppercase tracking-wide text-content-subtle">Transcript</span>
               <button
                 type="button"
                 onClick={handleSave}
                 disabled={saveLoading || !content?.segments?.length || !hasTranscriptEdits}
-                className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white shadow transition hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-accent-foreground shadow-glow-sm transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
                 title={!hasTranscriptEdits ? 'No changes to save' : 'Save transcript edits'}
                 aria-label={hasTranscriptEdits ? 'Save transcript' : 'Save (no changes)'}
               >
@@ -496,13 +496,13 @@ export default function MediaDetail() {
             </div>
             <div
               ref={transcriptScrollRef}
-              className="flex-1 overflow-y-auto overflow-x-hidden p-3"
+              className="flex-1 overflow-y-auto overflow-x-hidden p-4"
               onScroll={handleTranscriptPanelScroll}
             >
               {!content ? (
-                <p className="py-4 text-center text-slate-500">Loading transcript…</p>
+                <p className="py-4 text-center text-content-muted">Loading transcript…</p>
               ) : segments.length === 0 ? (
-                <p className="text-slate-500">No segments.</p>
+                <p className="text-content-muted">No segments.</p>
               ) : (
                 <ul className="space-y-2">
                   {segments.map((seg, i) => {
@@ -511,10 +511,10 @@ export default function MediaDetail() {
                       <li
                         key={i}
                         ref={(el) => { segmentRefs.current[i] = el; }}
-                        className={`scroll-mt-2 rounded-lg border px-3 py-2.5 transition-all duration-200 ${
+                        className={`scroll-mt-2 rounded-lg border px-3 py-3 transition-all duration-200 ${
                           isActive
-                            ? 'border-emerald-500 bg-emerald-100 shadow-sm ring-2 ring-emerald-400/50'
-                            : 'border-slate-200 bg-slate-50/80 hover:border-slate-300 hover:bg-slate-50'
+                            ? 'border-accent bg-accent-muted shadow-glow-sm ring-2 ring-accent/30'
+                            : 'border-surface-border bg-surface-muted/40 hover:border-surface-border hover:bg-surface-muted/60'
                         }`}
                       >
                         <input
@@ -525,9 +525,9 @@ export default function MediaDetail() {
                             pausePlayback();
                             setFollowTranscriptScroll(false);
                           }}
-                          className={`w-full border-0 bg-transparent text-sm outline-none focus:ring-0 ${
-                            isActive ? 'font-semibold text-emerald-900' : 'text-slate-700'
-                          } placeholder:text-slate-400`}
+                          className={`w-full border-0 bg-transparent text-small outline-none focus:ring-0 ${
+                            isActive ? 'font-semibold text-accent' : 'text-content'
+                          } placeholder:text-content-subtle`}
                           placeholder="—"
                         />
                       </li>
@@ -536,8 +536,8 @@ export default function MediaDetail() {
                 </ul>
               )}
             </div>
-            <div className="shrink-0 border-t border-slate-200 bg-slate-50/50 p-3">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Export</p>
+            <div className="shrink-0 border-t border-surface-border bg-surface-muted/30 p-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-content-subtle">Export</p>
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { format: 'srt', label: 'SRT' },
@@ -548,7 +548,7 @@ export default function MediaDetail() {
                     key={format}
                     type="button"
                     onClick={() => handleDownloadExport(format)}
-                    className="rounded-lg border border-emerald-500/80 bg-white px-2 py-2 text-xs font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50 active:scale-[0.98]"
+                    className="rounded-lg border border-accent/50 bg-surface-muted/60 px-2 py-2 text-xs font-semibold text-accent shadow-sm transition hover:bg-accent-muted active:scale-[0.98]"
                   >
                     {label}
                   </button>
@@ -560,11 +560,11 @@ export default function MediaDetail() {
       )}
 
       {canShowPlayer && transcript && (
-        <div className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="rounded-xl border border-surface-border bg-surface/90 p-6 shadow-glass backdrop-blur-xl">
+          <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-sm font-semibold text-slate-800">AI summary</h2>
-              <p className="mt-0.5 text-xs text-slate-500">
+              <h2 className="text-small font-semibold text-content">AI summary</h2>
+              <p className="mt-2 text-xs text-content-subtle">
                 Generated from your transcript as Markdown (headings, lists, bold). Copy keeps the same structure for pasting elsewhere.
               </p>
             </div>
@@ -574,7 +574,7 @@ export default function MediaDetail() {
                   <button
                     type="button"
                     onClick={handleCopySummary}
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                    className="rounded-lg border border-surface-border bg-surface-muted/60 px-3 py-2 text-xs font-semibold text-content shadow-sm transition hover:border-accent/40"
                   >
                     {summaryCopyFlash ? 'Copied!' : 'Copy Markdown'}
                   </button>
@@ -582,7 +582,7 @@ export default function MediaDetail() {
                     type="button"
                     onClick={handleDownloadSummaryPdf}
                     disabled={summaryPdfLoading}
-                    className="rounded-lg border border-emerald-500/80 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-100 disabled:opacity-50"
+                    className="rounded-lg border border-accent/50 bg-accent-muted px-3 py-2 text-xs font-semibold text-accent shadow-sm transition hover:brightness-110 disabled:opacity-50"
                   >
                     {summaryPdfLoading ? 'PDF…' : 'Download PDF'}
                   </button>
@@ -592,14 +592,14 @@ export default function MediaDetail() {
                 type="button"
                 onClick={handleGenerateSummary}
                 disabled={summaryGenLoading}
-                className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white shadow transition hover:bg-emerald-600 disabled:opacity-50"
+                className="rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-accent-foreground shadow-glow-sm transition hover:brightness-110 disabled:opacity-50"
               >
                 {summaryGenLoading ? 'Generating…' : summary?.text ? 'Regenerate' : 'Generate summary'}
               </button>
             </div>
           </div>
           {summary?.text ? (
-            <div className="summary-md rounded-lg border border-slate-100 bg-slate-50/50 p-4 text-sm leading-relaxed text-slate-800 [&_h1]:mb-2 [&_h1]:mt-3 [&_h1]:text-lg [&_h1]:font-bold [&_h1]:text-slate-900 [&_h1]:first:mt-0 [&_h2]:mb-2 [&_h2]:mt-3 [&_h2]:text-base [&_h2]:font-bold [&_h2]:text-slate-900 [&_h3]:mb-1 [&_h3]:mt-2 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-slate-900 [&_li]:my-1 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-2 [&_p]:text-slate-700 [&_strong]:font-semibold [&_strong]:text-slate-900 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_blockquote]:border-l-4 [&_blockquote]:border-slate-300 [&_blockquote]:pl-3 [&_blockquote]:italic">
+            <div className="summary-md rounded-lg border border-surface-border bg-surface-muted/30 p-4 text-small leading-relaxed text-content [&_h1]:mb-2 [&_h1]:mt-3 [&_h1]:text-lg [&_h1]:font-bold [&_h1]:text-content [&_h1]:first:mt-0 [&_h2]:mb-2 [&_h2]:mt-3 [&_h2]:text-base [&_h2]:font-bold [&_h2]:text-content [&_h3]:mb-1 [&_h3]:mt-2 [&_h3]:text-small [&_h3]:font-semibold [&_h3]:text-content [&_li]:my-1 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-2 [&_p]:text-content-muted [&_strong]:font-semibold [&_strong]:text-content [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_blockquote]:border-l-4 [&_blockquote]:border-surface-border [&_blockquote]:pl-3 [&_blockquote]:italic">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
@@ -608,13 +608,13 @@ export default function MediaDetail() {
                     const isBlock = match || String(children).includes('\n');
                     if (!isBlock && !className) {
                       return (
-                        <code className="rounded bg-slate-200/80 px-1 py-0.5 font-mono text-xs text-slate-800" {...props}>
+                        <code className="rounded bg-surface-muted px-1 py-1 font-mono text-xs text-accent" {...props}>
                           {children}
                         </code>
                       );
                     }
                     return (
-                      <pre className="my-2 overflow-x-auto rounded-lg bg-slate-900/90 p-3 font-mono text-xs text-slate-100">
+                      <pre className="my-2 overflow-x-auto rounded-lg bg-canvas p-3 font-mono text-xs text-content">
                         <code className={className} {...props}>
                           {children}
                         </code>
@@ -627,11 +627,11 @@ export default function MediaDetail() {
               </ReactMarkdown>
             </div>
           ) : (
-            <p className="text-sm text-slate-500">No summary yet. Generate one from your transcript (uses the configured AI provider).</p>
+            <p className="text-small text-content-muted">No summary yet. Generate one from your transcript (uses the configured AI provider).</p>
           )}
           {summary?._id && (
-            <div className="mt-4 border-t border-slate-100 pt-4">
-              <label htmlFor="summary-notes" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <div className="mt-6 border-t border-surface-border pt-6">
+              <label htmlFor="summary-notes" className="text-xs font-semibold uppercase tracking-wide text-content-subtle">
                 Your notes
               </label>
               <textarea
@@ -640,7 +640,7 @@ export default function MediaDetail() {
                 onChange={(e) => setNotesDraft(e.target.value)}
                 onBlur={handleSaveNotes}
                 rows={3}
-                className="mt-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none ring-emerald-500/20 focus:border-emerald-400 focus:ring-2"
+                className="mt-2 w-full rounded-lg border border-surface-border bg-surface-muted/50 px-3 py-2 text-small text-content outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
                 placeholder="Private notes (saved automatically on blur)…"
               />
               <div className="mt-2 flex justify-end">
@@ -648,7 +648,7 @@ export default function MediaDetail() {
                   type="button"
                   onClick={handleSaveNotes}
                   disabled={notesSaving}
-                  className="text-xs font-medium text-emerald-600 hover:underline disabled:opacity-50"
+                  className="text-xs font-medium text-accent hover:underline disabled:opacity-50"
                 >
                   {notesSaving ? 'Saving…' : 'Save notes'}
                 </button>
@@ -659,14 +659,14 @@ export default function MediaDetail() {
       )}
 
       {error && media.status === 'COMPLETED' && (
-        <p className="mb-4 text-sm text-red-600">{error}</p>
+        <p className="text-small text-red-300">{error}</p>
       )}
 
-      <div className="mt-8 flex justify-end">
+      <div className="flex justify-end pt-4">
         <button
           type="button"
           onClick={() => setShowDeleteModal(true)}
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 transition-all duration-200 hover:bg-red-100"
+          className="rounded-xl border border-red-500/40 bg-red-500/10 px-6 py-3 text-small font-medium text-red-200 transition hover:bg-red-500/15"
         >
           Delete media
         </button>
@@ -681,28 +681,28 @@ export default function MediaDetail() {
           aria-labelledby="delete-modal-title"
         >
           <div
-            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
             onClick={() => setShowDeleteModal(false)}
           />
-          <div className="relative w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
-            <h2 id="delete-modal-title" className="text-lg font-semibold text-slate-800">
+          <div className="relative w-full max-w-sm rounded-2xl border border-surface-border bg-surface/95 p-6 shadow-glass backdrop-blur-xl">
+            <h2 id="delete-modal-title" className="text-lg font-semibold text-content">
               Delete media?
             </h2>
-            <p className="mt-2 text-sm text-slate-600">
+            <p className="mt-2 text-small text-content-muted">
               This will delete the media and its transcript. This cannot be undone.
             </p>
-            <div className="mt-6 flex gap-3 justify-end">
+            <div className="mt-6 flex gap-4 justify-end">
               <button
                 type="button"
                 onClick={() => setShowDeleteModal(false)}
-                className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                className="rounded-xl border border-surface-border bg-surface-muted/80 px-6 py-3 text-small font-medium text-content-muted hover:border-accent/30"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={confirmDelete}
-                className="rounded-xl bg-red-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-600"
+                className="rounded-xl bg-red-600 px-6 py-3 text-small font-medium text-white hover:bg-red-500"
               >
                 Delete
               </button>

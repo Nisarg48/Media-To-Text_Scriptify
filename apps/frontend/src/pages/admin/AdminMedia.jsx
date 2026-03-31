@@ -12,11 +12,11 @@ const STATUS_OPTIONS = [
 ];
 
 const STATUS_BADGE = {
-    UPLOADING:  'bg-slate-100 text-slate-600',
-    UPLOADED:   'bg-slate-100 text-slate-600',
-    PROCESSING: 'bg-amber-100 text-amber-700',
-    COMPLETED:  'bg-emerald-100 text-emerald-700',
-    FAILED:     'bg-red-100 text-red-600',
+    UPLOADING:  'border border-slate-500/40 bg-slate-700/50 text-slate-200',
+    UPLOADED:   'border border-slate-500/40 bg-slate-700/50 text-slate-200',
+    PROCESSING: 'border border-amber-500/35 bg-amber-500/15 text-amber-200',
+    COMPLETED:  'border border-accent/40 bg-accent-muted text-accent',
+    FAILED:     'border border-red-500/35 bg-red-500/15 text-red-300',
 };
 
 const STATUS_LABEL = {
@@ -40,10 +40,10 @@ function formatDate(dateStr) {
 
 function TableSkeleton() {
     return [...Array(8)].map((_, i) => (
-        <tr key={i} className="border-b border-slate-100">
+        <tr key={i} className="border-b border-surface-border">
             {[200, 120, 70, 80, 80, 120].map((w, j) => (
                 <td key={j} className="px-4 py-3">
-                    <div className="h-4 animate-pulse rounded bg-slate-100" style={{ width: w }} />
+                    <div className="h-4 animate-pulse rounded bg-surface-muted/60" style={{ width: w }} />
                 </td>
             ))}
         </tr>
@@ -118,19 +118,17 @@ export default function AdminMedia() {
     };
 
     return (
-        <div className="animate-fade-in space-y-4 sm:space-y-5">
-            {/* Header */}
+        <div className="animate-fade-in space-y-6">
             <div>
-                <h1 className="text-xl font-bold text-slate-800 sm:text-2xl">Media</h1>
-                <p className="mt-0.5 text-sm text-slate-500">
+                <h1 className="text-h3 font-bold text-content sm:text-h2">Media</h1>
+                <p className="mt-2 text-small text-content-muted">
                     {loading ? 'Loading…' : `${total.toLocaleString()} record${total !== 1 ? 's' : ''}`}
                 </p>
             </div>
 
-            {/* User filter banner */}
             {userId && (
-                <div className="animate-fade-in flex items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5">
-                    <div className="flex items-center gap-2 text-sm text-blue-700">
+                <div className="animate-fade-in flex items-center justify-between gap-4 rounded-xl border border-sky-500/40 bg-sky-500/10 px-4 py-3">
+                    <div className="flex items-center gap-2 text-small text-sky-200">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 shrink-0">
                             <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" />
                         </svg>
@@ -142,7 +140,7 @@ export default function AdminMedia() {
                     <button
                         type="button"
                         onClick={clearUserFilter}
-                        className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-100 hover:text-blue-800"
+                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-sky-300 transition-colors hover:bg-sky-500/20"
                     >
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
                             <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -152,11 +150,9 @@ export default function AdminMedia() {
                 </div>
             )}
 
-            {/* Filters */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                {/* Search */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap">
                 <div className="relative min-w-0 flex-1 sm:min-w-[200px]">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-subtle">
                         <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
                     </svg>
                     <input
@@ -164,21 +160,20 @@ export default function AdminMedia() {
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Search filename…"
-                        className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-4 text-sm shadow-sm outline-none transition-all placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
+                        className="w-full rounded-xl border border-surface-border bg-surface-muted/50 py-2 pl-8 pr-4 text-small text-content outline-none transition placeholder:text-content-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
                     />
                 </div>
 
-                {/* Status filter pills */}
-                <div className="flex flex-wrap gap-1.5 rounded-xl border border-slate-200 bg-slate-50 p-1 shadow-sm">
+                <div className="flex flex-wrap gap-2 rounded-xl border border-surface-border bg-surface-muted/40 p-2 shadow-sm">
                     {STATUS_OPTIONS.map((opt) => (
                         <button
                             key={opt.value}
                             type="button"
                             onClick={() => { setStatusFilter(opt.value); setPage(1); }}
-                            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-150 ${
+                            className={`rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-150 ${
                                 statusFilter === opt.value
-                                    ? 'bg-emerald-500 text-white shadow-sm'
-                                    : 'text-slate-500 hover:bg-white hover:text-slate-800 hover:shadow-sm'
+                                    ? 'bg-accent text-accent-foreground shadow-glow-sm'
+                                    : 'text-content-muted hover:bg-surface hover:text-content'
                             }`}
                         >
                             {opt.label}
@@ -186,17 +181,16 @@ export default function AdminMedia() {
                     ))}
                 </div>
 
-                {/* Type toggle */}
-                <div className="flex gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 shadow-sm">
+                <div className="flex gap-2 rounded-xl border border-surface-border bg-surface-muted/40 p-2 shadow-sm">
                     {['all', 'VIDEO', 'AUDIO'].map((t) => (
                         <button
                             key={t}
                             type="button"
                             onClick={() => { setTypeFilter(t); setPage(1); }}
-                            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-150 ${
+                            className={`rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-150 ${
                                 typeFilter === t
-                                    ? 'bg-emerald-500 text-white shadow-sm'
-                                    : 'text-slate-500 hover:bg-white hover:text-slate-800 hover:shadow-sm'
+                                    ? 'bg-accent text-accent-foreground shadow-glow-sm'
+                                    : 'text-content-muted hover:bg-surface hover:text-content'
                             }`}
                         >
                             {t === 'all' ? 'All types' : t === 'VIDEO' ? 'Video' : 'Audio'}
@@ -206,75 +200,74 @@ export default function AdminMedia() {
             </div>
 
             {error && (
-                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-small text-red-200">
                     {error}
                 </div>
             )}
 
-            {/* Table */}
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-2xl border border-surface-border bg-surface/90 shadow-glass backdrop-blur-xl">
                 <div className="overflow-x-auto">
-                    <table className="w-full min-w-[580px] text-sm">
+                    <table className="admin-data-table w-full min-w-[580px] text-small">
                         <thead>
-                            <tr className="border-b border-slate-100 bg-slate-50/60">
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Filename</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Owner</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Type</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Status</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Size</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Created</th>
+                            <tr className="border-b border-surface-border">
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-content-subtle">Filename</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-content-subtle">Owner</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-content-subtle">Type</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-content-subtle">Status</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-content-subtle">Size</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-content-subtle">Created</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y divide-surface-border">
                             {loading ? (
                                 <TableSkeleton />
                             ) : media.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
+                                    <td colSpan={6} className="px-4 py-12 text-center text-content-subtle">
                                         {userId ? `No media for this user` : 'No media found'}
                                     </td>
                                 </tr>
                             ) : (
                                 media.map((item, i) => {
-                                    const sc = STATUS_BADGE[item.status] || 'bg-slate-100 text-slate-600';
+                                    const sc = STATUS_BADGE[item.status] || 'border border-slate-500/40 bg-slate-700/50 text-slate-200';
                                     const sl = STATUS_LABEL[item.status] || item.status;
                                     return (
                                         <tr
                                             key={item._id}
-                                            className="animate-fade-in-up group transition-colors hover:bg-slate-50/80"
+                                            className="animate-fade-in-up group transition-colors hover:bg-surface-muted/30"
                                             style={{ animationDelay: `${i * 0.03}s`, animationFillMode: 'backwards' }}
                                         >
                                             <td className="max-w-[200px] px-4 py-3">
                                                 <Link
                                                     to={`/admin/media/${item._id}`}
-                                                    className="block truncate font-medium text-slate-700 transition-colors hover:text-emerald-600"
+                                                    className="block truncate font-medium text-content transition-colors hover:text-accent"
                                                     title={item.filename}
                                                 >
                                                     {item.filename}
                                                 </Link>
                                                 {item.deletedAt && (
-                                                    <span className="mt-0.5 inline-block rounded bg-red-100 px-1.5 py-0.5 text-xs text-red-600">
+                                                    <span className="mt-0.5 inline-block rounded bg-red-500/20 px-2 py-1 text-xs text-red-300">
                                                         deleted
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className="px-4 py-3 text-slate-500">
+                                            <td className="px-4 py-3 text-content-muted">
                                                 <span title={item.mediaUploadedBy?.email}>
-                                                    {item.mediaUploadedBy?.name || <span className="italic text-slate-400">—</span>}
+                                                    {item.mediaUploadedBy?.name || <span className="italic text-content-subtle">—</span>}
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3">
-                                                <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${item.mediaType === 'VIDEO' ? 'bg-blue-100 text-blue-700' : 'bg-violet-100 text-violet-700'}`}>
+                                                <span className={`rounded-md px-2 py-1 text-xs font-medium ${item.mediaType === 'VIDEO' ? 'border border-sky-500/35 bg-sky-500/15 text-sky-200' : 'border border-violet-500/35 bg-violet-500/15 text-violet-200'}`}>
                                                     {item.mediaType}
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3">
-                                                <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${sc}`}>{sl}</span>
+                                                <span className={`rounded-md px-2 py-1 text-xs font-medium ${sc}`}>{sl}</span>
                                             </td>
-                                            <td className="px-4 py-3 tabular-nums text-slate-400">
+                                            <td className="px-4 py-3 tabular-nums text-content-subtle">
                                                 {formatBytes(item.sizeBytes)}
                                             </td>
-                                            <td className="px-4 py-3 tabular-nums text-slate-400">
+                                            <td className="px-4 py-3 tabular-nums text-content-subtle">
                                                 {formatDate(item.createdAt)}
                                             </td>
                                         </tr>
@@ -287,8 +280,8 @@ export default function AdminMedia() {
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3">
-                        <p className="text-xs text-slate-400">
+                    <div className="flex flex-wrap items-center justify-between gap-4 border-t border-surface-border px-4 py-4">
+                        <p className="text-xs text-content-subtle">
                             Page {page} of {totalPages} &middot; {total} records
                         </p>
                         <div className="flex gap-2">
@@ -296,7 +289,7 @@ export default function AdminMedia() {
                                 type="button"
                                 disabled={page <= 1}
                                 onClick={() => setPage((p) => p - 1)}
-                                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                className="rounded-lg border border-surface-border px-6 py-2 text-xs font-medium text-content-muted transition-colors hover:border-accent/30 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                                 ← Prev
                             </button>
@@ -304,7 +297,7 @@ export default function AdminMedia() {
                                 type="button"
                                 disabled={page >= totalPages}
                                 onClick={() => setPage((p) => p + 1)}
-                                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                className="rounded-lg border border-surface-border px-6 py-2 text-xs font-medium text-content-muted transition-colors hover:border-accent/30 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                                 Next →
                             </button>

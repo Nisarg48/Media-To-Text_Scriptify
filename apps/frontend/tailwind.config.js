@@ -6,6 +6,43 @@ export default {
   ],
   theme: {
     extend: {
+      colors: {
+        canvas: {
+          DEFAULT: "#030712",
+          elevated: "#0a0f1a",
+        },
+        surface: {
+          DEFAULT: "rgba(15, 23, 42, 0.72)",
+          muted: "rgba(30, 41, 59, 0.55)",
+          border: "rgba(148, 163, 184, 0.12)",
+        },
+        accent: {
+          DEFAULT: "#22d3ee",
+          muted: "rgba(34, 211, 238, 0.15)",
+          foreground: "#020617",
+        },
+        content: {
+          DEFAULT: "#f1f5f9",
+          muted: "rgba(186, 198, 214, 0.92)",
+          subtle: "rgba(148, 163, 184, 0.88)",
+        },
+      },
+      fontFamily: {
+        sans: ['"Space Grotesk"', "system-ui", "sans-serif"],
+      },
+      fontSize: {
+        display: ["3rem", { lineHeight: "1.1", letterSpacing: "-0.02em", fontWeight: "700" }],
+        h1: ["2.5rem", { lineHeight: "1.15", letterSpacing: "-0.02em", fontWeight: "700" }],
+        h2: ["2rem", { lineHeight: "1.2", letterSpacing: "-0.02em", fontWeight: "700" }],
+        h3: ["1.5rem", { lineHeight: "1.3", fontWeight: "600" }],
+        body: ["1rem", { lineHeight: "1.6" }],
+        small: ["0.875rem", { lineHeight: "1.5" }],
+      },
+      boxShadow: {
+        glow: "0 0 24px -4px rgba(34, 211, 238, 0.45), 0 0 8px -2px rgba(34, 211, 238, 0.25)",
+        "glow-sm": "0 0 16px -6px rgba(34, 211, 238, 0.4)",
+        glass: "0 8px 32px rgba(0, 0, 0, 0.35)",
+      },
       keyframes: {
         'fade-in': {
           '0%': { opacity: '0', transform: 'translateY(-8px)' },
@@ -59,4 +96,3 @@ export default {
   },
   plugins: [],
 }
-

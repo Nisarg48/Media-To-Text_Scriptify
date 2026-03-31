@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 const inputClass =
-  'w-full rounded-xl border border-slate-300 bg-slate-50/50 py-3 pl-4 pr-11 text-slate-800 placeholder-slate-400 outline-none transition duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:bg-white sm:py-3.5';
+  'w-full rounded-xl border border-surface-border bg-surface-muted/50 py-3 pl-4 pr-11 text-content placeholder-content-subtle outline-none transition duration-200 focus:border-accent focus:ring-2 focus:ring-accent/25 focus:bg-surface/80 sm:py-4';
 
 function EyeIcon() {
   return (
@@ -53,7 +53,7 @@ export default function PasswordField({
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
-        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-content-subtle transition hover:bg-surface-muted/80 hover:text-content focus:outline-none focus:ring-2 focus:ring-accent/40"
         aria-label={visible ? 'Hide password' : 'Show password'}
         aria-pressed={visible}
         title={visible ? 'Hide password' : 'Show password'}

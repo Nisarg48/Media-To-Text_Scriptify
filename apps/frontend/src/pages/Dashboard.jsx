@@ -4,16 +4,16 @@ import axios from 'axios';
 import apiClient from '../api/client';
 
 const STATUS_CONFIG = {
-  UPLOADING: { label: 'Uploading', className: 'bg-slate-200 text-slate-700' },
-  UPLOADED: { label: 'Queued', className: 'bg-slate-200 text-slate-700' },
-  PROCESSING: { label: 'Processing', className: 'bg-amber-100 text-amber-800' },
-  COMPLETED: { label: 'Done', className: 'bg-emerald-100 text-emerald-800' },
-  FAILED: { label: 'Failed', className: 'bg-red-100 text-red-700' },
+  UPLOADING: { label: 'Uploading', className: 'border border-slate-500/40 bg-slate-700/50 text-slate-200' },
+  UPLOADED: { label: 'Queued', className: 'border border-slate-500/40 bg-slate-700/50 text-slate-200' },
+  PROCESSING: { label: 'Processing', className: 'border border-amber-500/35 bg-amber-500/15 text-amber-200' },
+  COMPLETED: { label: 'Done', className: 'border border-accent/40 bg-accent-muted text-accent' },
+  FAILED: { label: 'Failed', className: 'border border-red-500/35 bg-red-500/15 text-red-300' },
 };
 
 const MEDIA_TYPE_LABELS = {
-  VIDEO: { label: 'Video', className: 'bg-blue-100 text-blue-800' },
-  AUDIO: { label: 'Audio', className: 'bg-violet-100 text-violet-800' },
+  VIDEO: { label: 'Video', className: 'border border-sky-500/35 bg-sky-500/15 text-sky-200' },
+  AUDIO: { label: 'Audio', className: 'border border-violet-500/35 bg-violet-500/15 text-violet-200' },
 };
 
 const TYPE_FILTER_OPTIONS = [
@@ -81,18 +81,18 @@ function isCanceledError(err) {
 
 function StatCard({ label, value, sub, accent }) {
   const accentMap = {
-    green: 'border-l-emerald-400 bg-emerald-50',
-    amber: 'border-l-amber-400 bg-amber-50',
-    red: 'border-l-red-400 bg-red-50',
-    slate: 'border-l-slate-300 bg-slate-50',
-    blue: 'border-l-blue-400 bg-blue-50',
-    violet: 'border-l-violet-400 bg-violet-50',
+    green: 'border-l-accent bg-accent-muted/50',
+    amber: 'border-l-amber-400 bg-amber-500/10',
+    red: 'border-l-red-400 bg-red-500/10',
+    slate: 'border-l-slate-500 bg-surface-muted/80',
+    blue: 'border-l-sky-400 bg-sky-500/10',
+    violet: 'border-l-violet-400 bg-violet-500/10',
   };
   return (
-    <div className={`rounded-xl border border-slate-200 border-l-4 bg-white p-4 shadow-sm ${accentMap[accent] ?? accentMap.slate}`}>
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-slate-800">{value}</p>
-      {sub && <p className="mt-0.5 text-xs text-slate-500">{sub}</p>}
+    <div className={`rounded-xl border border-surface-border border-l-4 bg-surface/90 p-4 shadow-glass backdrop-blur-sm ${accentMap[accent] ?? accentMap.slate}`}>
+      <p className="text-xs font-medium uppercase tracking-wide text-content-subtle">{label}</p>
+      <p className="mt-2 text-2xl font-bold text-content">{value}</p>
+      {sub && <p className="mt-2 text-xs text-content-muted">{sub}</p>}
     </div>
   );
 }
@@ -107,38 +107,38 @@ function QuotaStatCard({ subscription, dimmed }) {
   const retentionDays = subscription?.retentionDays ?? 15;
 
   return (
-    <div className="relative flex h-full min-h-[5.5rem] flex-col overflow-hidden rounded-xl border border-slate-200 border-l-4 border-l-violet-400 bg-violet-50/80 p-4 shadow-sm">
+    <div className="relative flex h-full min-h-[5.5rem] flex-col overflow-hidden rounded-xl border border-surface-border border-l-4 border-l-violet-400 bg-violet-500/10 p-4 shadow-glass backdrop-blur-sm">
       <div className={dimmed ? 'pointer-events-none blur-sm opacity-40' : ''}>
-        <div className="mb-1 flex items-center justify-between gap-1">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Plan & quota</p>
-          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${isPro ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <p className="text-xs font-medium uppercase tracking-wide text-content-subtle">Plan & quota</p>
+          <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${isPro ? 'bg-accent-muted text-accent' : 'bg-surface-muted text-content-muted'}`}>
             {isPro ? 'Pro' : 'Free'}
           </span>
         </div>
-        <p className={`text-sm font-bold tabular-nums text-slate-800 ${mediaDanger ? 'text-red-700' : mediaWarn ? 'text-amber-800' : ''}`}>
+        <p className={`text-sm font-bold tabular-nums text-content ${mediaDanger ? 'text-red-300' : mediaWarn ? 'text-amber-200' : ''}`}>
           {mediaCount} / {maxMedia} files
         </p>
-        <div className="mt-2 h-2 w-full flex-1 overflow-hidden rounded-full bg-white/80">
+        <div className="mt-2 h-2 w-full flex-1 overflow-hidden rounded-full bg-canvas/80">
           <div
-            className={`h-full rounded-full transition-all duration-500 ${mediaDanger ? 'bg-red-500' : mediaWarn ? 'bg-amber-400' : 'bg-emerald-500'}`}
+            className={`h-full rounded-full transition-all duration-500 ${mediaDanger ? 'bg-red-500' : mediaWarn ? 'bg-amber-400' : 'bg-accent'}`}
             style={{ width: `${mediaPct}%` }}
           />
         </div>
         {!isPro && (
           <RouterLink
             to="/dashboard/billing"
-            className="mt-2 inline-block w-fit rounded-lg bg-emerald-500 px-2 py-1 text-[10px] font-semibold text-white shadow hover:bg-emerald-600"
+            className="mt-2 inline-block w-fit rounded-lg bg-accent px-2 py-1 text-[10px] font-semibold text-accent-foreground shadow-glow-sm hover:brightness-110"
           >
             Upgrade
           </RouterLink>
         )}
-        <p className="mt-1 text-[10px] leading-tight text-slate-400">
+        <p className="mt-2 text-[10px] leading-tight text-content-subtle">
           {retentionDays}-day retention per upload (not tied to the dashboard date filter)
         </p>
       </div>
       {dimmed && (
-        <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/70 px-2 text-center">
-          <p className="text-[11px] font-medium leading-snug text-slate-600">
+        <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-canvas/80 px-2 text-center backdrop-blur-sm">
+          <p className="text-[11px] font-medium leading-snug text-content-muted">
             Quota applies to billing, not the date filter. Clear the date filter to view.
           </p>
         </div>
@@ -150,10 +150,10 @@ function QuotaStatCard({ subscription, dimmed }) {
 function UsageStats({ stats, loading, quotaDimmed }) {
   if (loading) {
     return (
-      <div className="mb-6">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-24 animate-pulse rounded-xl bg-slate-100" />
+            <div key={i} className="h-24 animate-pulse rounded-xl bg-surface-muted/60" />
           ))}
         </div>
       </div>
@@ -165,8 +165,8 @@ function UsageStats({ stats, loading, quotaDimmed }) {
   const inFlight = (byStatus?.PROCESSING ?? 0) + (byStatus?.UPLOADED ?? 0);
 
   return (
-    <div className="mb-6">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <StatCard label="Total files" value={totalFiles} accent="slate" />
         <StatCard label="Completed" value={byStatus?.COMPLETED ?? 0} accent="green" />
         <StatCard label="In progress" value={inFlight} sub={inFlight > 0 ? 'Queued / processing' : undefined} accent="amber" />
@@ -333,12 +333,12 @@ export default function Dashboard() {
   };
 
   const periodToolbar = (
-    <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mb-6 rounded-xl border border-surface-border bg-surface/90 p-6 shadow-glass backdrop-blur-xl">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Dashboard period</p>
-          <p className="mt-0.5 text-sm font-medium text-slate-800">{periodLabel}</p>
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="text-xs font-medium uppercase tracking-wide text-content-subtle">Dashboard period</p>
+          <p className="mt-2 text-small font-medium text-content">{periodLabel}</p>
+          <p className="mt-2 text-xs text-content-subtle">
             {periodScope === 'all'
               ? 'Showing all of your media. Open the date filter to limit by range.'
               : 'Stats and list match the selected range (completed by finish time; in-progress by upload time).'}
@@ -348,10 +348,10 @@ export default function Dashboard() {
           <button
             type="button"
             onClick={handleCloseDateFilterToggle}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold shadow-sm transition ${
+            className={`rounded-lg px-4 py-2 text-small font-semibold shadow-sm transition ${
               filterPanelOpen || periodScope === 'range'
-                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                ? 'bg-accent text-accent-foreground shadow-glow-sm hover:brightness-110'
+                : 'border border-surface-border bg-surface-muted/80 text-content-muted hover:border-accent/30 hover:text-content'
             }`}
           >
             {filterPanelOpen ? 'Close & clear filters' : 'Date filter'}
@@ -362,7 +362,7 @@ export default function Dashboard() {
               onClick={() => {
                 setPeriodScope('all');
               }}
-              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="rounded-lg border border-surface-border bg-surface-muted/80 px-4 py-2 text-small font-medium text-content-muted hover:border-accent/30 hover:text-content"
             >
               Clear date filter
             </button>
@@ -371,22 +371,22 @@ export default function Dashboard() {
       </div>
 
       {filterPanelOpen && (
-        <div className="mt-4 border-t border-slate-100 pt-4">
-          <p className="mb-3 text-xs font-medium text-slate-500">
+        <div className="mt-6 border-t border-surface-border pt-6">
+          <p className="mb-4 text-xs font-medium text-content-muted">
             Pick a range below. Transcript quota stays hidden until you clear the date filter.
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={applyThisMonth}
-              className={`rounded-lg px-3 py-2 text-sm font-medium transition ${preset === 'this' && periodScope === 'range' ? 'bg-emerald-500 text-white shadow' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+              className={`rounded-lg px-4 py-2 text-small font-medium transition ${preset === 'this' && periodScope === 'range' ? 'bg-accent text-accent-foreground shadow-glow-sm' : 'bg-surface-muted text-content-muted hover:bg-surface/80'}`}
             >
               This month
             </button>
             <button
               type="button"
               onClick={applyPrevMonth}
-              className={`rounded-lg px-3 py-2 text-sm font-medium transition ${preset === 'prev' && periodScope === 'range' ? 'bg-emerald-500 text-white shadow' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+              className={`rounded-lg px-4 py-2 text-small font-medium transition ${preset === 'prev' && periodScope === 'range' ? 'bg-accent text-accent-foreground shadow-glow-sm' : 'bg-surface-muted text-content-muted hover:bg-surface/80'}`}
             >
               Previous month
             </button>
@@ -395,21 +395,21 @@ export default function Dashboard() {
                 type="date"
                 value={customFrom}
                 onChange={(e) => setCustomFrom(e.target.value)}
-                className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                className="rounded-lg border border-surface-border bg-canvas-elevated px-2 py-2 text-small text-content"
                 aria-label="Custom range start"
               />
-              <span className="text-slate-400">to</span>
+              <span className="text-content-subtle">to</span>
               <input
                 type="date"
                 value={customTo}
                 onChange={(e) => setCustomTo(e.target.value)}
-                className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                className="rounded-lg border border-surface-border bg-canvas-elevated px-2 py-2 text-small text-content"
                 aria-label="Custom range end"
               />
               <button
                 type="button"
                 onClick={applyCustom}
-                className={`rounded-lg px-3 py-2 text-sm font-medium transition ${preset === 'custom' && periodScope === 'range' ? 'bg-emerald-500 text-white shadow' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                className={`rounded-lg px-4 py-2 text-small font-medium transition ${preset === 'custom' && periodScope === 'range' ? 'bg-accent text-accent-foreground shadow-glow-sm' : 'bg-surface-muted text-content-muted hover:bg-surface/80'}`}
               >
                 Apply range
               </button>
@@ -418,7 +418,7 @@ export default function Dashboard() {
           <button
             type="button"
             onClick={clearAllFiltersAndClosePanel}
-            className="mt-3 text-sm font-medium text-emerald-700 hover:underline"
+            className="mt-4 text-small font-medium text-accent hover:underline"
           >
             Clear all filters & show all activity
           </button>
@@ -429,11 +429,11 @@ export default function Dashboard() {
 
   if (loading && media.length === 0 && !error) {
     return (
-      <div className="animate-fade-in pb-8 pt-1">
+      <div className="animate-fade-in space-y-10 pb-10 pt-2">
         {periodToolbar}
         <UsageStats stats={stats} loading={statsLoading} quotaDimmed={quotaDimmed} />
         <div className="flex min-h-[40vh] items-center justify-center">
-          <p className="text-slate-500">Loading…</p>
+          <p className="text-content-muted">Loading…</p>
         </div>
       </div>
     );
@@ -441,7 +441,7 @@ export default function Dashboard() {
 
   if (error) {
     return (
-      <div className="animate-fade-in rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+      <div className="animate-fade-in rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-red-200">
         {error}
       </div>
     );
@@ -449,21 +449,21 @@ export default function Dashboard() {
 
   if (media.length === 0 && total === 0 && !searchDebounced && statusFilter === 'all') {
     return (
-      <div className="animate-fade-in">
+      <div className="animate-fade-in space-y-10 pb-10 pt-2">
         {periodToolbar}
         <UsageStats stats={stats} loading={statsLoading} quotaDimmed={quotaDimmed} />
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-lg sm:p-12">
-          <h2 className="text-xl font-semibold text-slate-800 sm:text-2xl">
+        <div className="rounded-2xl border border-surface-border bg-surface/90 p-8 text-center shadow-glass backdrop-blur-xl sm:p-12">
+          <h2 className="text-h3 font-semibold text-content sm:text-h2">
             {periodScope === 'all' ? 'No media yet' : 'No activity in this period'}
           </h2>
-          <p className="mt-2 text-slate-600">
+          <p className="mt-4 text-content-muted">
             {periodScope === 'all'
               ? 'Upload your first audio or video to get a transcript.'
               : 'Nothing matches the selected dates. Try another range or clear the date filter.'}
           </p>
           <RouterLink
             to="/dashboard/upload"
-            className="mt-6 inline-flex rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:bg-emerald-600 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+            className="mt-8 inline-flex rounded-xl bg-accent px-6 py-3 text-small font-semibold text-accent-foreground shadow-glow-sm transition hover:brightness-110 active:scale-[0.98]"
           >
             Upload media
           </RouterLink>
@@ -473,26 +473,26 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="animate-fade-in pb-8 pt-1">
+    <div className="animate-fade-in space-y-10 pb-10 pt-2">
       {periodToolbar}
       <UsageStats stats={stats} loading={statsLoading} quotaDimmed={quotaDimmed} />
 
-      <div className="mb-6 flex flex-col gap-4">
+      <div className="flex flex-col gap-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-          <h1 className="text-2xl font-bold text-slate-800">Your media</h1>
+          <h1 className="text-h2 font-bold text-content">Your media</h1>
           <div className="flex flex-wrap gap-2">
             <input
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by filename…"
-              className="min-w-[200px] flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-800 shadow-sm outline-none ring-emerald-500/20 transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 sm:max-w-xs"
+              className="min-w-[200px] flex-1 rounded-xl border border-surface-border bg-surface-muted/60 px-4 py-2 text-small text-content shadow-sm outline-none transition placeholder:text-content-subtle focus:border-accent focus:ring-2 focus:ring-accent/25 sm:max-w-xs"
               aria-label="Search media by filename"
             />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20"
+              className="rounded-xl border border-surface-border bg-surface-muted/60 px-4 py-2 text-small text-content outline-none focus:border-accent focus:ring-2 focus:ring-accent/25"
               aria-label="Filter by status"
             >
               {STATUS_FILTER_OPTIONS.map((opt) => (
@@ -504,17 +504,17 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-1 shadow-sm" role="group" aria-label="Filter by type">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex rounded-xl border border-surface-border bg-surface-muted/50 p-2 shadow-sm" role="group" aria-label="Filter by type">
             {TYPE_FILTER_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
                 onClick={() => setTypeFilter(opt.value)}
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 ${
+                className={`rounded-lg px-4 py-2 text-small font-medium transition-all duration-200 ${
                   typeFilter === opt.value
-                    ? 'bg-white text-emerald-700 shadow-md'
-                    : 'bg-transparent text-slate-600 hover:bg-white/80 hover:text-slate-800'
+                    ? 'bg-surface text-accent ring-1 ring-accent/30'
+                    : 'bg-transparent text-content-muted hover:bg-surface/80 hover:text-content'
                 }`}
               >
                 {opt.label}
@@ -522,7 +522,7 @@ export default function Dashboard() {
             ))}
           </div>
           {total > 0 && (
-            <p className="text-sm text-slate-500">
+            <p className="text-small text-content-muted">
               {total} item{total !== 1 ? 's' : ''}
               {totalPages > 1 && ` · Page ${page} of ${totalPages}`}
             </p>
@@ -531,8 +531,8 @@ export default function Dashboard() {
       </div>
 
       {filteredMedia.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <p className="text-slate-600">
+        <div className="rounded-2xl border border-surface-border bg-surface/90 p-8 text-center shadow-glass">
+          <p className="text-content-muted">
             No media matches your filters.
             {(searchDebounced || statusFilter !== 'all' || typeFilter !== 'all') && (
               <button
@@ -542,7 +542,7 @@ export default function Dashboard() {
                   setStatusFilter('all');
                   setTypeFilter('all');
                 }}
-                className="ml-1 font-medium text-emerald-600 hover:underline"
+                className="ml-2 font-medium text-accent hover:underline"
               >
                 Clear filters
               </button>
@@ -552,30 +552,30 @@ export default function Dashboard() {
       ) : (
         <>
           {loading && media.length > 0 && (
-            <p className="mb-2 text-center text-xs text-slate-400" aria-live="polite">
+            <p className="mb-2 text-center text-xs text-content-subtle" aria-live="polite">
               Updating…
             </p>
           )}
           <ul className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-3 ${loading && media.length > 0 ? 'opacity-70' : ''}`}>
             {filteredMedia.map((item, i) => {
-              const statusInfo = STATUS_CONFIG[item.status] || { label: item.status, className: 'bg-slate-200 text-slate-700' };
-              const typeInfo = MEDIA_TYPE_LABELS[item.mediaType] || { label: item.mediaType, className: 'bg-slate-200 text-slate-700' };
+              const statusInfo = STATUS_CONFIG[item.status] || { label: item.status, className: 'border border-slate-500/40 bg-slate-700/50 text-slate-200' };
+              const typeInfo = MEDIA_TYPE_LABELS[item.mediaType] || { label: item.mediaType, className: 'border border-slate-500/40 bg-slate-700/50 text-slate-200' };
               return (
                 <li key={item._id} className="animate-fade-in-up" style={{ animationDelay: `${i * 0.05}s`, animationFillMode: 'backwards' }}>
                   <RouterLink
                     to={`/media/${item._id}`}
-                    className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:border-emerald-200 hover:shadow-md hover:scale-[1.01]"
+                    className="block rounded-xl border border-surface-border bg-surface/90 p-4 shadow-glass backdrop-blur-sm transition hover:border-accent/40 hover:shadow-glow-sm hover:scale-[1.01]"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="min-w-0 flex-1 truncate font-medium text-slate-800" title={item.filename}>
+                      <p className="min-w-0 flex-1 truncate font-medium text-content" title={item.filename}>
                         {item.filename}
                       </p>
-                      <span className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ${typeInfo.className}`}>
+                      <span className={`shrink-0 rounded-md px-2 py-1 text-xs font-medium ${typeInfo.className}`}>
                         {typeInfo.label}
                       </span>
                     </div>
-                    <p className="mt-1 text-xs text-slate-500">{formatDate(item.createdAt)}</p>
-                    <span className={`mt-2 inline-block rounded-md px-2 py-0.5 text-xs font-medium ${statusInfo.className}`}>
+                    <p className="mt-2 text-xs text-content-subtle">{formatDate(item.createdAt)}</p>
+                    <span className={`mt-2 inline-block rounded-md px-2 py-1 text-xs font-medium ${statusInfo.className}`}>
                       {statusInfo.label}
                     </span>
                   </RouterLink>
@@ -590,18 +590,18 @@ export default function Dashboard() {
                 type="button"
                 disabled={page <= 1 || loading}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg border border-surface-border bg-surface-muted/80 px-4 py-2 text-small font-medium text-content-muted transition hover:border-accent/30 hover:text-content disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Previous
               </button>
-              <span className="px-2 text-sm text-slate-600">
+              <span className="px-2 text-small text-content-muted">
                 Page {page} / {totalPages}
               </span>
               <button
                 type="button"
                 disabled={page >= totalPages || loading}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg border border-surface-border bg-surface-muted/80 px-4 py-2 text-small font-medium text-content-muted transition hover:border-accent/30 hover:text-content disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Next
               </button>

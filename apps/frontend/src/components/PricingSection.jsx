@@ -3,7 +3,7 @@ import { PRICING_PLANS } from '../data/pricingPlans';
 
 function CheckIcon() {
   return (
-    <svg className="h-4 w-4 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden>
+    <svg className="h-4 w-4 shrink-0 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden>
       <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
     </svg>
   );
@@ -18,10 +18,10 @@ export default function PricingSection({ compact = false, className = '' }) {
     <section className={`w-full ${className}`}>
       {!compact && (
         <div className="mx-auto max-w-3xl text-center">
-          <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
+          <h2 className="text-h1 font-extrabold tracking-tight text-content sm:text-[2.5rem]">
             Simple, transparent pricing
           </h2>
-          <p className="mt-3 text-lg text-slate-500">
+          <p className="mt-4 text-lg text-content-muted">
             Start free. Upgrade when you need more storage, retention, and capacity.
           </p>
         </div>
@@ -33,31 +33,31 @@ export default function PricingSection({ compact = false, className = '' }) {
         {PRICING_PLANS.map((plan) => (
           <div
             key={plan.id}
-            className={`relative flex flex-col rounded-2xl border p-8 shadow-sm transition-shadow hover:shadow-md ${
+            className={`relative flex flex-col rounded-2xl border p-8 shadow-glass backdrop-blur-xl transition-shadow hover:shadow-glow-sm ${
               plan.highlight
-                ? 'border-emerald-400 bg-white ring-2 ring-emerald-400/20'
-                : 'border-slate-200 bg-white'
+                ? 'border-accent/50 bg-surface ring-2 ring-accent/20'
+                : 'border-surface-border bg-surface/90'
             }`}
           >
             {plan.highlight && (
-              <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-emerald-500 px-3 py-0.5 text-xs font-semibold text-white shadow">
+              <span className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-accent px-4 py-1 text-xs font-semibold text-accent-foreground shadow-glow-sm">
                 Most popular
               </span>
             )}
 
             <div className="mb-6">
-              <p className="text-sm font-semibold uppercase tracking-widest text-slate-400">{plan.name}</p>
-              <div className="mt-2 flex items-end gap-1">
-                <span className="text-4xl font-extrabold text-slate-900">{plan.price}</span>
-                <span className="mb-1 text-sm text-slate-400">/{plan.period}</span>
+              <p className="text-small font-semibold uppercase tracking-widest text-content-subtle">{plan.name}</p>
+              <div className="mt-2 flex items-end gap-2">
+                <span className="text-4xl font-extrabold text-content">{plan.price}</span>
+                <span className="mb-1 text-small text-content-subtle">/{plan.period}</span>
               </div>
-              <p className="mt-2 text-sm text-slate-500">{plan.description}</p>
+              <p className="mt-2 text-small text-content-muted">{plan.description}</p>
             </div>
 
             <ul className="mb-8 flex-1 space-y-3">
               {plan.features.map((f) => (
-                <li key={f} className="flex items-start gap-2 text-sm text-slate-700">
-                  <span className="mt-0.5">
+                <li key={f} className="flex items-start gap-2 text-small text-content-muted">
+                  <span className="mt-1">
                     <CheckIcon />
                   </span>
                   {f}
@@ -67,10 +67,10 @@ export default function PricingSection({ compact = false, className = '' }) {
 
             <Link
               to={plan.ctaTo}
-              className={`block w-full rounded-xl py-3 text-center text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${
+              className={`block w-full rounded-xl py-4 text-center text-small font-semibold transition hover:scale-[1.02] active:scale-[0.98] ${
                 plan.highlight
-                  ? 'bg-emerald-500 text-white shadow-md hover:bg-emerald-600 hover:shadow-lg'
-                  : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                  ? 'bg-accent text-accent-foreground shadow-glow-sm hover:brightness-110'
+                  : 'border border-surface-border bg-surface-muted/60 text-content hover:border-accent/40 hover:bg-accent-muted'
               }`}
             >
               {plan.cta}
@@ -80,7 +80,7 @@ export default function PricingSection({ compact = false, className = '' }) {
       </div>
 
       {!compact && (
-        <p className="mt-8 text-center text-sm text-slate-400">
+        <p className="mt-10 text-center text-small text-content-subtle">
           No credit card required for Free. Pro is billed securely via Stripe.
         </p>
       )}

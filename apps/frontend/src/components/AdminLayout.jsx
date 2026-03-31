@@ -61,17 +61,15 @@ function Sidebar({ onClose }) {
     const navigate = useNavigate();
 
     return (
-        <aside className="flex h-full w-60 flex-col bg-slate-900">
-            {/* Logo */}
-            <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-slate-800 px-5">
-                <span className="text-lg font-bold tracking-tight text-white">Scriptify</span>
-                <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-400 ring-1 ring-inset ring-emerald-500/25">
+        <aside className="flex h-full w-60 flex-col border-r border-surface-border bg-canvas-elevated/95 backdrop-blur-xl">
+            <div className="flex h-16 shrink-0 items-center gap-2 border-b border-surface-border px-6">
+                <span className="text-lg font-bold tracking-tight text-content">Scriptify</span>
+                <span className="rounded-md bg-accent-muted px-2 py-1 text-xs font-semibold text-accent ring-1 ring-inset ring-accent/25">
                     Admin
                 </span>
             </div>
 
-            {/* Navigation */}
-            <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
+            <nav className="flex-1 space-y-2 overflow-y-auto px-4 py-6">
                 {NAV_ITEMS.map((item) => (
                     <NavLink
                         key={item.to}
@@ -79,21 +77,21 @@ function Sidebar({ onClose }) {
                         end={item.end}
                         onClick={onClose}
                         className={({ isActive }) =>
-                            `group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                            `group flex items-center gap-3 rounded-xl border px-3 py-3 text-small font-medium transition-all duration-150 ${
                                 isActive
-                                    ? 'bg-slate-800 text-white shadow-sm'
-                                    : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-100'
+                                    ? 'border-accent/40 bg-accent-muted text-content shadow-glow-sm'
+                                    : 'border-transparent text-content-muted hover:border-surface-border hover:bg-surface-muted/60 hover:text-content'
                             }`
                         }
                     >
                         {({ isActive }) => (
                             <>
-                                <span className={isActive ? 'text-emerald-400' : 'text-slate-500 group-hover:text-slate-300'}>
+                                <span className={isActive ? 'text-accent' : 'text-content-subtle group-hover:text-content-muted'}>
                                     {item.icon}
                                 </span>
                                 {item.label}
                                 {isActive && (
-                                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                                    <span className="ml-auto h-2 w-2 rounded-full bg-accent shadow-glow-sm" />
                                 )}
                             </>
                         )}
@@ -101,12 +99,11 @@ function Sidebar({ onClose }) {
                 ))}
             </nav>
 
-            {/* Footer */}
-            <div className="shrink-0 space-y-0.5 border-t border-slate-800 px-3 py-4">
+            <div className="shrink-0 space-y-2 border-t border-surface-border px-4 py-6">
                 <Link
                     to="/dashboard"
                     onClick={onClose}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-500 transition-all duration-150 hover:bg-slate-800/60 hover:text-slate-200"
+                    className="flex items-center gap-3 rounded-xl px-3 py-3 text-small font-medium text-content-subtle transition hover:bg-surface-muted/60 hover:text-content"
                 >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
                         <path d="M19 12H5M12 19l-7-7 7-7" />
@@ -116,7 +113,7 @@ function Sidebar({ onClose }) {
                 <button
                     type="button"
                     onClick={() => { logout(); navigate('/'); }}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-500 transition-all duration-150 hover:bg-rose-500/10 hover:text-rose-400"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-small font-medium text-content-subtle transition hover:bg-rose-500/10 hover:text-rose-300"
                 >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
                         <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
@@ -132,17 +129,15 @@ export default function AdminLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     return (
-        <div className="flex h-screen overflow-hidden bg-slate-50">
-            {/* Desktop sidebar */}
+        <div className="flex h-screen overflow-hidden bg-transparent">
             <div className="hidden lg:flex lg:shrink-0">
                 <Sidebar onClose={() => {}} />
             </div>
 
-            {/* Mobile sidebar overlay */}
             {sidebarOpen && (
                 <>
                     <div
-                        className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+                        className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden"
                         onClick={() => setSidebarOpen(false)}
                     />
                     <div className="fixed inset-y-0 left-0 z-50 flex lg:hidden animate-slide-in-left">
@@ -151,14 +146,12 @@ export default function AdminLayout() {
                 </>
             )}
 
-            {/* Main */}
             <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-                {/* Mobile top bar */}
-                <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 shadow-sm lg:hidden">
+                <header className="flex h-14 shrink-0 items-center gap-4 border-b border-surface-border bg-surface/80 px-4 shadow-glass backdrop-blur-xl lg:hidden">
                     <button
                         type="button"
                         onClick={() => setSidebarOpen(true)}
-                        className="rounded-lg p-1.5 text-slate-600 transition-colors hover:bg-slate-100"
+                        className="rounded-lg p-2 text-content-muted transition-colors hover:bg-surface-muted/60 hover:text-content"
                         aria-label="Open sidebar"
                     >
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
@@ -167,11 +160,10 @@ export default function AdminLayout() {
                             <line x1="3" y1="18" x2="21" y2="18" />
                         </svg>
                     </button>
-                    <span className="text-base font-semibold text-slate-800">Admin Panel</span>
+                    <span className="text-base font-semibold text-content">Admin Panel</span>
                 </header>
 
-                {/* Page content */}
-                <main className="flex-1 overflow-y-auto overflow-x-hidden p-5 sm:p-7">
+                <main className="flex-1 overflow-y-auto overflow-x-hidden p-6 sm:p-8">
                     <Outlet />
                 </main>
             </div>

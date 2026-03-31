@@ -15,8 +15,8 @@ export default function ProcessingTimeline({ status }) {
   const currentIndex = getStepIndex(status);
 
   return (
-    <div className="animate-fade-in rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
+    <div className="animate-fade-in rounded-2xl border border-surface-border bg-surface/90 p-6 shadow-glass backdrop-blur-xl">
+      <h3 className="mb-4 text-small font-semibold uppercase tracking-wide text-content-subtle">
         Current status
       </h3>
       <div className="flex items-start">
@@ -31,17 +31,17 @@ export default function ProcessingTimeline({ status }) {
                 {i > 0 && (
                   <div
                     className={`h-1 flex-1 rounded-full transition-all duration-500 ${
-                      isPast ? 'bg-emerald-500' : 'bg-slate-200'
+                      isPast ? 'bg-accent' : 'bg-surface-muted'
                     }`}
                   />
                 )}
                 <div
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-all duration-300 ${
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-all duration-300 ${
                     isPast
-                      ? 'bg-emerald-500 text-white'
+                      ? 'bg-accent text-accent-foreground'
                       : isActive
-                        ? 'bg-emerald-500 text-white ring-4 ring-emerald-500/30'
-                        : 'bg-slate-200 text-slate-500'
+                        ? 'bg-accent text-accent-foreground shadow-glow-sm ring-4 ring-accent/30'
+                        : 'bg-surface-muted text-content-subtle'
                   } ${showInProgress ? 'animate-pulse' : ''}`}
                 >
                   {isPast ? '✓' : i + 1}
@@ -49,19 +49,19 @@ export default function ProcessingTimeline({ status }) {
                 {i < STEPS.length - 1 && (
                   <div
                     className={`h-1 flex-1 rounded-full transition-all duration-500 ${
-                      isPast ? 'bg-emerald-500' : 'bg-slate-200'
+                      isPast ? 'bg-accent' : 'bg-surface-muted'
                     }`}
                   />
                 )}
               </div>
               <span
                 className={`mt-2 text-center text-xs font-medium transition-colors ${
-                  isActive ? 'text-emerald-600' : isPast ? 'text-slate-600' : 'text-slate-400'
+                  isActive ? 'text-accent' : isPast ? 'text-content-muted' : 'text-content-subtle'
                 }`}
               >
                 {step.label}
                 {showInProgress && (
-                  <span className="ml-1 text-slate-500">(in progress)</span>
+                  <span className="ml-1 text-content-subtle">(in progress)</span>
                 )}
               </span>
             </div>

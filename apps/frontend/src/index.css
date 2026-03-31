@@ -2,69 +2,65 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
+/* Subtle film grain — low contrast, no extra hue */
+@layer base {
   :root {
-    color: #213547;
-    background-color: #ffffff;
+    color-scheme: dark;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    --scriptify-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
   }
-  a:hover {
-    color: #747bff;
+
+  html {
+    @apply font-sans text-body text-content antialiased;
   }
-  button {
-    background-color: #f9f9f9;
+
+  body {
+    @apply m-0 min-h-screen min-w-[320px];
+    background-color: theme("colors.canvas.DEFAULT");
+    background-image:
+      radial-gradient(ellipse 90% 55% at 100% 0%, rgba(34, 211, 238, 0.07) 0%, transparent 52%),
+      var(--scriptify-noise);
+    background-size: auto, 120px 120px;
+    background-blend-mode: normal, overlay;
+  }
+
+  #root {
+    @apply relative z-10 min-h-screen;
+  }
+
+  /* Unified keyboard focus for links (inputs keep component-level focus styles) */
+  a:focus-visible {
+    @apply rounded-md outline-none ring-2 ring-accent/55 ring-offset-2 ring-offset-canvas;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Sticky header + zebra for dense admin tables */
+  .admin-data-table thead th {
+    @apply sticky top-0 z-10 border-b border-surface-border bg-surface-muted/95 backdrop-blur-md;
+  }
+
+  .admin-data-table tbody tr:nth-child(even) {
+    @apply bg-surface-muted/15;
+  }
+
+  .admin-data-table tbody tr:hover {
+    @apply bg-surface-muted/25;
   }
 }

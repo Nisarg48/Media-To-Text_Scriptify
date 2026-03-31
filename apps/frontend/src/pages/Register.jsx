@@ -69,53 +69,59 @@ const Register = () => {
     }
   };
 
+  const inputClass =
+    'w-full rounded-xl border border-surface-border bg-surface-muted/50 px-4 py-3 text-content placeholder-content-subtle outline-none transition duration-200 focus:border-accent focus:ring-2 focus:ring-accent/25 focus:bg-surface/80 sm:py-4';
+
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-emerald-50/40 px-4 py-8 sm:py-12 lg:py-16">
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,.02)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,.02)_1px,transparent_1px)] bg-[size:48px_48px]" aria-hidden />
+    <div className="relative flex min-h-screen w-full items-center justify-center bg-transparent px-4 py-8 sm:py-12 lg:py-16">
+      <div
+        className="absolute inset-0 bg-[linear-gradient(rgba(34,211,238,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.04)_1px,transparent_1px)] bg-[size:48px_48px]"
+        aria-hidden
+      />
 
       <div className="relative w-full max-w-md animate-scale-in">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xl sm:p-8 lg:p-10">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-800 sm:text-3xl">Scriptify</h1>
-            <p className="mt-2 text-sm text-slate-600 sm:text-base">Create an account and choose a plan</p>
+        <div className="rounded-2xl border border-surface-border bg-surface/90 p-6 shadow-glass backdrop-blur-xl sm:p-8 lg:p-10">
+          <div className="mb-8 text-center">
+            <h1 className="text-h2 font-bold tracking-tight text-content sm:text-h1">Scriptify</h1>
+            <p className="mt-2 text-small text-content-muted sm:text-body">Create an account and choose a plan</p>
           </div>
 
           {error && (
-            <div role="alert" className="mb-6 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 animate-shake">
-              <span className="shrink-0 text-red-500" aria-hidden>⚠</span>
+            <div role="alert" className="mb-6 flex items-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-small text-rose-200 animate-shake">
+              <span className="shrink-0 text-rose-400" aria-hidden>⚠</span>
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <fieldset className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-              <legend className="text-sm font-semibold text-slate-700">Plan</legend>
-              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-transparent p-2 hover:bg-white has-[:checked]:border-emerald-300 has-[:checked]:bg-emerald-50/50">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <fieldset className="space-y-4 rounded-xl border border-surface-border bg-surface-muted/40 p-4">
+              <legend className="text-small font-semibold text-content">Plan</legend>
+              <label className="flex cursor-pointer items-start gap-4 rounded-lg border border-transparent p-2 transition hover:bg-surface-muted/60 has-[:checked]:border-accent/50 has-[:checked]:bg-accent-muted">
                 <input
                   type="radio"
                   name="plan"
-                  className="mt-1 text-emerald-600"
+                  className="mt-1 accent-accent"
                   checked={initialPlan === 'free'}
                   onChange={() => setInitialPlan('free')}
                 />
                 <span>
-                  <span className="font-medium text-slate-800">Free</span>
-                  <span className="mt-0.5 block text-xs text-slate-500">
+                  <span className="font-medium text-content">Free</span>
+                  <span className="mt-1 block text-xs text-content-subtle">
                     30 min/month, no card required. Upgrade anytime.
                   </span>
                 </span>
               </label>
-              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-transparent p-2 hover:bg-white has-[:checked]:border-emerald-300 has-[:checked]:bg-emerald-50/50">
+              <label className="flex cursor-pointer items-start gap-4 rounded-lg border border-transparent p-2 transition hover:bg-surface-muted/60 has-[:checked]:border-accent/50 has-[:checked]:bg-accent-muted">
                 <input
                   type="radio"
                   name="plan"
-                  className="mt-1 text-emerald-600"
+                  className="mt-1 accent-accent"
                   checked={initialPlan === 'pro'}
                   onChange={() => setInitialPlan('pro')}
                 />
                 <span>
-                  <span className="font-medium text-slate-800">Pro</span>
-                  <span className="mt-0.5 block text-xs text-slate-500">
+                  <span className="font-medium text-content">Pro</span>
+                  <span className="mt-1 block text-xs text-content-subtle">
                     300 min/month — you&apos;ll complete Stripe checkout after signup.
                   </span>
                 </span>
@@ -132,7 +138,7 @@ const Register = () => {
                 placeholder="Full name"
                 value={formData.name}
                 onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
-                className="w-full rounded-xl border border-slate-300 bg-slate-50/50 px-4 py-3 text-slate-800 placeholder-slate-400 outline-none transition duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:bg-white sm:py-3.5"
+                className={inputClass}
               />
             </div>
             <div>
@@ -145,7 +151,7 @@ const Register = () => {
                 placeholder="Email address"
                 value={formData.email}
                 onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
-                className="w-full rounded-xl border border-slate-300 bg-slate-50/50 px-4 py-3 text-slate-800 placeholder-slate-400 outline-none transition duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:bg-white sm:py-3.5"
+                className={inputClass}
               />
             </div>
             <PasswordField
@@ -161,20 +167,20 @@ const Register = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-emerald-500 py-3.5 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:bg-emerald-600 hover:shadow-lg hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-60 disabled:pointer-events-none active:scale-[0.99] sm:py-4"
+              className="w-full rounded-xl bg-accent py-4 text-small font-semibold text-accent-foreground shadow-glow-sm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-canvas disabled:pointer-events-none disabled:opacity-60 active:scale-[0.99]"
             >
               {loading ? 'Creating account…' : initialPlan === 'pro' ? 'Continue to checkout' : 'Create account'}
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-slate-600">
+          <p className="mt-6 text-center text-small text-content-muted">
             Already have an account?{' '}
-            <Link to={{ pathname: '/login', search: location.search }} className="font-medium text-emerald-600 transition hover:text-emerald-700 focus:outline-none focus:underline">
+            <Link to={{ pathname: '/login', search: location.search }} className="font-medium text-accent transition hover:brightness-125 focus:outline-none focus:underline">
               Sign in
             </Link>
           </p>
-          <p className="mt-4 text-center text-xs text-slate-400">
-            <Link to="/pricing" className="text-emerald-600 hover:underline">Compare plans</Link>
+          <p className="mt-4 text-center text-xs text-content-subtle">
+            <Link to="/pricing" className="text-accent hover:underline">Compare plans</Link>
           </p>
         </div>
       </div>

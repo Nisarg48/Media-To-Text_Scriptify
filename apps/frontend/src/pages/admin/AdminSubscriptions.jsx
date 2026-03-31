@@ -37,7 +37,7 @@ export default function AdminSubscriptions() {
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-8 text-slate-600">
+      <div className="rounded-2xl border border-surface-border bg-surface/90 p-8 text-content-muted">
         Loading subscription data…
       </div>
     );
@@ -45,7 +45,7 @@ export default function AdminSubscriptions() {
 
   if (error) {
     return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800" role="alert">
+      <div className="rounded-2xl border border-red-500/40 bg-red-500/10 p-6 text-red-200" role="alert">
         {error}
       </div>
     );
@@ -54,11 +54,11 @@ export default function AdminSubscriptions() {
   return (
     <div className="space-y-10">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Subscriptions</h1>
-        <p className="mt-1 text-sm text-slate-500">Current plan state per user (Mongo + Stripe).</p>
-        <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500">
+        <h1 className="text-h2 font-bold text-content">Subscriptions</h1>
+        <p className="mt-2 text-small text-content-muted">Current plan state per user (Mongo + Stripe).</p>
+        <div className="mt-6 overflow-x-auto rounded-xl border border-surface-border bg-surface/90 shadow-glass">
+          <table className="admin-data-table min-w-full text-left text-small">
+            <thead className="text-xs font-semibold uppercase text-content-subtle">
               <tr>
                 <th className="px-4 py-3">User</th>
                 <th className="px-4 py-3">Plan</th>
@@ -67,24 +67,24 @@ export default function AdminSubscriptions() {
                 <th className="px-4 py-3">Stripe sub</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-surface-border">
               {subs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-slate-500">
+                  <td colSpan={5} className="px-4 py-6 text-center text-content-muted">
                     No subscription documents yet.
                   </td>
                 </tr>
               ) : (
                 subs.map((row) => (
-                  <tr key={row._id} className="hover:bg-slate-50/80">
-                    <td className="px-4 py-3 text-slate-800">
+                  <tr key={row._id} className="hover:bg-surface-muted/30">
+                    <td className="px-4 py-3 text-content">
                       {row.userId?.name || '—'}{' '}
-                      <span className="block text-xs text-slate-500">{row.userId?.email}</span>
+                      <span className="block text-xs text-content-subtle">{row.userId?.email}</span>
                     </td>
                     <td className="px-4 py-3 font-medium capitalize">{row.plan}</td>
                     <td className="px-4 py-3">{row.status}</td>
-                    <td className="px-4 py-3 text-slate-600">{formatDate(row.currentPeriodEnd)}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-slate-500">
+                    <td className="px-4 py-3 text-content-muted">{formatDate(row.currentPeriodEnd)}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-content-subtle">
                       {row.stripeSubscriptionId || '—'}
                     </td>
                   </tr>
@@ -96,13 +96,13 @@ export default function AdminSubscriptions() {
       </div>
 
       <div>
-        <h2 className="text-xl font-bold text-slate-900">Subscription audit log</h2>
-        <p className="mt-1 text-sm text-slate-500">
+        <h2 className="text-h3 font-bold text-content">Subscription audit log</h2>
+        <p className="mt-2 text-small text-content-muted">
           Signups, upgrades, Stripe webhooks — append-only for analytics.
         </p>
-        <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-500">
+        <div className="mt-6 overflow-x-auto rounded-xl border border-surface-border bg-surface/90 shadow-glass">
+          <table className="admin-data-table min-w-full text-left text-small">
+            <thead className="text-xs font-semibold uppercase text-content-subtle">
               <tr>
                 <th className="px-4 py-3">Time</th>
                 <th className="px-4 py-3">User</th>
@@ -111,26 +111,26 @@ export default function AdminSubscriptions() {
                 <th className="px-4 py-3">Stripe event</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-surface-border">
               {logs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-slate-500">
+                  <td colSpan={5} className="px-4 py-6 text-center text-content-muted">
                     No audit entries yet.
                   </td>
                 </tr>
               ) : (
                 logs.map((log) => (
-                  <tr key={log._id} className="hover:bg-slate-50/80">
-                    <td className="whitespace-nowrap px-4 py-3 text-slate-600">{formatDate(log.createdAt)}</td>
-                    <td className="px-4 py-3 text-slate-800">
+                  <tr key={log._id} className="hover:bg-surface-muted/30">
+                    <td className="whitespace-nowrap px-4 py-3 text-content-muted">{formatDate(log.createdAt)}</td>
+                    <td className="px-4 py-3 text-content">
                       {log.userId?.name || '—'}{' '}
-                      <span className="block text-xs text-slate-500">{log.userId?.email}</span>
+                      <span className="block text-xs text-content-subtle">{log.userId?.email}</span>
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-slate-800">{log.action}</td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-4 py-3 font-mono text-xs text-content">{log.action}</td>
+                    <td className="px-4 py-3 text-content-muted">
                       {(log.fromPlan || '—') + ' → ' + (log.toPlan || '—')}
                     </td>
-                    <td className="max-w-[180px] truncate px-4 py-3 font-mono text-xs text-slate-500">
+                    <td className="max-w-[180px] truncate px-4 py-3 font-mono text-xs text-content-subtle">
                       {log.stripeEventId || '—'}
                     </td>
                   </tr>

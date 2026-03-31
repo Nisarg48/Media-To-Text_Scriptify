@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom';
 import apiClient from '../../api/client';
 
 const ROLE_CONFIG = {
-    admin:  { label: 'Admin',  cls: 'bg-rose-100 text-rose-700 ring-1 ring-rose-200' },
-    worker: { label: 'Worker', cls: 'bg-blue-100 text-blue-700 ring-1 ring-blue-200' },
-    user:   { label: 'User',   cls: 'bg-slate-100 text-slate-600 ring-1 ring-slate-200' },
+    admin:  { label: 'Admin',  cls: 'bg-rose-500/20 text-rose-200 ring-1 ring-rose-500/30' },
+    worker: { label: 'Worker', cls: 'bg-sky-500/20 text-sky-200 ring-1 ring-sky-500/30' },
+    user:   { label: 'User',   cls: 'bg-surface-muted text-content-muted ring-1 ring-surface-border' },
 };
 
 function formatDate(dateStr) {
@@ -34,13 +34,13 @@ function Avatar({ name }) {
         .slice(0, 2);
 
     const colors = [
-        'bg-blue-500', 'bg-violet-500', 'bg-emerald-500',
-        'bg-amber-500', 'bg-rose-500', 'bg-cyan-500',
+        'bg-sky-600', 'bg-violet-600', 'bg-cyan-600',
+        'bg-amber-600', 'bg-rose-600', 'bg-teal-600',
     ];
     const color = colors[(name?.charCodeAt(0) || 0) % colors.length];
 
     return (
-        <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${color}`}>
+        <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${color}`}>
             {initials}
         </span>
     );
@@ -48,19 +48,19 @@ function Avatar({ name }) {
 
 function TableSkeleton() {
     return [...Array(6)].map((_, i) => (
-        <tr key={i} className="border-b border-slate-100">
+        <tr key={i} className="border-b border-surface-border">
             <td className="px-4 py-3">
-                <div className="flex items-center gap-3">
-                    <div className="h-7 w-7 animate-pulse rounded-full bg-slate-100" />
-                    <div className="space-y-1.5">
-                        <div className="h-3.5 w-28 animate-pulse rounded bg-slate-100" />
-                        <div className="h-3 w-36 animate-pulse rounded bg-slate-100" />
+                <div className="flex items-center gap-4">
+                    <div className="h-8 w-8 animate-pulse rounded-full bg-surface-muted/60" />
+                    <div className="space-y-2">
+                        <div className="h-4 w-28 animate-pulse rounded bg-surface-muted/60" />
+                        <div className="h-3 w-36 animate-pulse rounded bg-surface-muted/60" />
                     </div>
                 </div>
             </td>
             {[70, 60, 60, 80, 80].map((w, j) => (
                 <td key={j} className="px-4 py-3">
-                    <div className="h-4 animate-pulse rounded bg-slate-100" style={{ width: w }} />
+                    <div className="h-4 animate-pulse rounded bg-surface-muted/60" style={{ width: w }} />
                 </td>
             ))}
         </tr>
@@ -95,19 +95,17 @@ export default function AdminUsers() {
     }, [users, search, roleFilter]);
 
     return (
-        <div className="animate-fade-in space-y-5">
-            {/* Header */}
+        <div className="animate-fade-in space-y-6">
             <div>
-                <h1 className="text-xl font-bold text-slate-800 sm:text-2xl">Users</h1>
-                <p className="mt-0.5 text-sm text-slate-500">
+                <h1 className="text-h3 font-bold text-content sm:text-h2">Users</h1>
+                <p className="mt-2 text-small text-content-muted">
                     {loading ? 'Loading…' : `${users.length} registered`}
                 </p>
             </div>
 
-            {/* Filters */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap">
                 <div className="relative min-w-0 flex-1 sm:min-w-[200px]">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-subtle">
                         <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
                     </svg>
                     <input
@@ -115,20 +113,20 @@ export default function AdminUsers() {
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Search name or email…"
-                        className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-4 text-sm shadow-sm outline-none transition-all placeholder:text-slate-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
+                        className="w-full rounded-xl border border-surface-border bg-surface-muted/50 py-2 pl-8 pr-4 text-small text-content outline-none transition placeholder:text-content-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
                     />
                 </div>
 
-                <div className="flex gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 shadow-sm">
+                <div className="flex gap-2 rounded-xl border border-surface-border bg-surface-muted/40 p-2 shadow-sm">
                     {['all', 'admin', 'worker', 'user'].map((r) => (
                         <button
                             key={r}
                             type="button"
                             onClick={() => setRoleFilter(r)}
-                            className={`rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition-all duration-150 ${
+                            className={`rounded-lg px-4 py-2 text-xs font-semibold capitalize transition-all duration-150 ${
                                 roleFilter === r
-                                    ? 'bg-emerald-500 text-white shadow-sm'
-                                    : 'text-slate-500 hover:bg-white hover:text-slate-800 hover:shadow-sm'
+                                    ? 'bg-accent text-accent-foreground shadow-glow-sm'
+                                    : 'text-content-muted hover:bg-surface hover:text-content'
                             }`}
                         >
                             {r === 'all' ? 'All roles' : r}
@@ -138,31 +136,30 @@ export default function AdminUsers() {
             </div>
 
             {error && (
-                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-small text-red-200">
                     {error}
                 </div>
             )}
 
-            {/* Table */}
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-2xl border border-surface-border bg-surface/90 shadow-glass backdrop-blur-xl">
                 <div className="overflow-x-auto">
-                    <table className="w-full min-w-[580px] text-sm">
+                    <table className="admin-data-table w-full min-w-[580px] text-small">
                         <thead>
-                            <tr className="border-b border-slate-100 bg-slate-50/60">
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">User</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Role</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Media</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Last login</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Joined</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">Actions</th>
+                            <tr className="border-b border-surface-border">
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-content-subtle">User</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-content-subtle">Role</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-content-subtle">Media</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-content-subtle">Last login</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-content-subtle">Joined</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-content-subtle">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y divide-surface-border">
                             {loading ? (
                                 <TableSkeleton />
                             ) : filtered.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
+                                    <td colSpan={6} className="px-4 py-12 text-center text-content-subtle">
                                         {search || roleFilter !== 'all' ? 'No users match your filters' : 'No users yet'}
                                     </td>
                                 </tr>
@@ -173,37 +170,37 @@ export default function AdminUsers() {
                                     return (
                                         <tr
                                             key={u._id}
-                                            className="animate-fade-in-up group transition-colors hover:bg-slate-50/80"
+                                            className="animate-fade-in-up group transition-colors hover:bg-surface-muted/30"
                                             style={{ animationDelay: `${i * 0.03}s`, animationFillMode: 'backwards' }}
                                         >
                                             <td className="px-4 py-3">
-                                                <div className="flex items-center gap-3">
+                                                <div className="flex items-center gap-4">
                                                     <Avatar name={u.name} />
                                                     <div className="min-w-0">
-                                                        <p className="truncate font-medium text-slate-700">{u.name}</p>
-                                                        <p className="truncate text-xs text-slate-400">{u.email}</p>
+                                                        <p className="truncate font-medium text-content">{u.name}</p>
+                                                        <p className="truncate text-xs text-content-subtle">{u.email}</p>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td className="px-4 py-3">
-                                                <span className={`rounded-md px-2 py-0.5 text-xs font-medium capitalize ${rc.cls}`}>
+                                                <span className={`rounded-md px-2 py-1 text-xs font-medium capitalize ${rc.cls}`}>
                                                     {rc.label}
                                                 </span>
                                             </td>
-                                            <td className="px-4 py-3 tabular-nums text-slate-500">
+                                            <td className="px-4 py-3 tabular-nums text-content-muted">
                                                 <span className="font-medium">{u.activeMediaCount}</span>
-                                                <span className="text-xs text-slate-400"> / {u.mediaCount}</span>
+                                                <span className="text-xs text-content-subtle"> / {u.mediaCount}</span>
                                             </td>
-                                            <td className="px-4 py-3 text-slate-400">
+                                            <td className="px-4 py-3 text-content-subtle">
                                                 {formatDateTime(u.lastLogin)}
                                             </td>
-                                            <td className="px-4 py-3 tabular-nums text-slate-400">
+                                            <td className="px-4 py-3 tabular-nums text-content-subtle">
                                                 {formatDate(u.createdAt)}
                                             </td>
                                             <td className="px-4 py-3">
                                                 <Link
                                                     to={`/admin/media?userId=${u._id}&userName=${encodeURIComponent(u.name)}`}
-                                                    className="text-xs font-medium text-emerald-600 transition-colors hover:text-emerald-700"
+                                                    className="text-xs font-medium text-accent transition-colors hover:brightness-125"
                                                 >
                                                     View media →
                                                 </Link>
@@ -217,8 +214,8 @@ export default function AdminUsers() {
                 </div>
 
                 {!loading && filtered.length > 0 && (
-                    <div className="border-t border-slate-100 px-4 py-3">
-                        <p className="text-xs text-slate-400">
+                    <div className="border-t border-surface-border px-4 py-4">
+                        <p className="text-xs text-content-subtle">
                             Showing {filtered.length} of {users.length} users
                         </p>
                     </div>

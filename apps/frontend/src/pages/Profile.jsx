@@ -5,12 +5,15 @@ import { AuthContext } from '../context/AuthContext';
 
 function ProfileBox({ title, children }) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-400">{title}</h2>
+    <section className="rounded-2xl border border-surface-border bg-surface/90 p-6 shadow-glass backdrop-blur-xl">
+      <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-content-subtle">{title}</h2>
       {children}
     </section>
   );
 }
+
+const inputClass =
+  'w-full rounded-xl border border-surface-border bg-surface-muted/50 px-4 py-3 text-content outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/25 sm:py-4';
 
 export default function Profile() {
   const { logout } = useContext(AuthContext);
@@ -114,7 +117,7 @@ export default function Profile() {
   if (loadError) {
     return (
       <div className="mx-auto max-w-lg animate-fade-in">
-        <p className="text-red-600">{loadError}</p>
+        <p className="text-red-300">{loadError}</p>
       </div>
     );
   }
@@ -122,19 +125,19 @@ export default function Profile() {
   if (!profile) {
     return (
       <div className="mx-auto max-w-lg animate-fade-in">
-        <div className="h-40 animate-pulse rounded-2xl bg-slate-100" />
+        <div className="h-40 animate-pulse rounded-2xl bg-surface-muted/60" />
       </div>
     );
   }
 
   return (
     <div className="mx-auto max-w-lg animate-fade-in pb-12 pt-2">
-      <h1 className="mb-6 text-2xl font-bold text-slate-800">Profile</h1>
+      <h1 className="mb-6 text-h2 font-bold text-content">Profile</h1>
       <div className="space-y-6">
         <ProfileBox title="Account">
           <form onSubmit={handleSaveName} className="space-y-4">
             <div>
-              <label htmlFor="profile-name" className="mb-1 block text-sm font-medium text-slate-700">
+              <label htmlFor="profile-name" className="mb-2 block text-small font-medium text-content-muted">
                 Name
               </label>
               <input
@@ -142,12 +145,12 @@ export default function Profile() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-slate-800 shadow-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20"
+                className={inputClass}
                 autoComplete="name"
               />
             </div>
             <div>
-              <label htmlFor="profile-email" className="mb-1 block text-sm font-medium text-slate-700">
+              <label htmlFor="profile-email" className="mb-2 block text-small font-medium text-content-muted">
                 Email
               </label>
               <input
@@ -156,19 +159,19 @@ export default function Profile() {
                 value={profile.email}
                 readOnly
                 disabled
-                className="w-full cursor-not-allowed rounded-xl border border-slate-100 bg-slate-50 px-4 py-2.5 text-slate-500"
+                className="w-full cursor-not-allowed rounded-xl border border-surface-border bg-surface-muted/30 px-4 py-3 text-content-subtle sm:py-4"
               />
-              <p className="mt-1 text-xs text-slate-400">Email cannot be changed.</p>
+              <p className="mt-2 text-xs text-content-subtle">Email cannot be changed.</p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-4">
               <button
                 type="submit"
                 disabled={savingName}
-                className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-600 disabled:opacity-60"
+                className="rounded-xl bg-accent px-6 py-3 text-small font-semibold text-accent-foreground shadow-glow-sm hover:brightness-110 disabled:opacity-60"
               >
                 {savingName ? 'Saving…' : 'Save name'}
               </button>
-              {nameMsg ? <p className="text-sm text-slate-600">{nameMsg}</p> : null}
+              {nameMsg ? <p className="text-small text-content-muted">{nameMsg}</p> : null}
             </div>
           </form>
         </ProfileBox>
@@ -176,7 +179,7 @@ export default function Profile() {
         <ProfileBox title="Change password">
           <form onSubmit={handleChangePassword} className="space-y-4">
             <div>
-              <label htmlFor="new-pwd" className="mb-1 block text-sm font-medium text-slate-700">
+              <label htmlFor="new-pwd" className="mb-2 block text-small font-medium text-content-muted">
                 New password
               </label>
               <input
@@ -184,13 +187,13 @@ export default function Profile() {
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-slate-800 shadow-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20"
+                className={inputClass}
                 autoComplete="new-password"
                 minLength={8}
               />
             </div>
             <div>
-              <label htmlFor="conf-pwd" className="mb-1 block text-sm font-medium text-slate-700">
+              <label htmlFor="conf-pwd" className="mb-2 block text-small font-medium text-content-muted">
                 Confirm new password
               </label>
               <input
@@ -198,7 +201,7 @@ export default function Profile() {
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-slate-800 shadow-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20"
+                className={inputClass}
                 autoComplete="new-password"
                 minLength={8}
               />
@@ -206,26 +209,26 @@ export default function Profile() {
             <button
               type="submit"
               disabled={pwdSaving}
-              className="rounded-xl bg-slate-800 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-slate-900 disabled:opacity-60"
+              className="rounded-xl border border-surface-border bg-surface-muted/80 px-6 py-3 text-small font-semibold text-content transition hover:border-accent/40 disabled:opacity-60"
             >
               {pwdSaving ? 'Updating…' : 'Change password'}
             </button>
-            {pwdMsg ? <p className="text-sm text-slate-600">{pwdMsg}</p> : null}
+            {pwdMsg ? <p className="text-small text-content-muted">{pwdMsg}</p> : null}
           </form>
         </ProfileBox>
 
         <ProfileBox title="Session and account">
-          <p className="mb-4 text-sm text-slate-600">
+          <p className="mb-4 text-small text-content-muted">
             Log out on this device, or permanently close your account. Closing your account removes your media and files from storage, then marks your account as deleted while keeping a minimal record for our logs.
           </p>
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap">
             <button
               type="button"
               onClick={() => {
                 logout();
                 navigate('/', { replace: true });
               }}
-              className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+              className="rounded-xl border border-surface-border bg-surface-muted/80 px-6 py-4 text-small font-semibold text-content transition hover:border-accent/30"
             >
               Log out
             </button>
@@ -236,7 +239,7 @@ export default function Profile() {
                 setDeleteError('');
                 setShowDeleteModal(true);
               }}
-              className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 hover:bg-red-100"
+              className="rounded-xl border border-red-500/40 bg-red-500/10 px-6 py-4 text-small font-semibold text-red-200 transition hover:bg-red-500/15"
             >
               Delete account
             </button>
@@ -246,19 +249,19 @@ export default function Profile() {
 
       {showDeleteModal ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-modal-title"
         >
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
-            <h3 id="delete-modal-title" className="text-lg font-bold text-slate-800">
+          <div className="w-full max-w-md rounded-2xl border border-surface-border bg-surface/95 p-6 shadow-glass backdrop-blur-xl">
+            <h3 id="delete-modal-title" className="text-lg font-bold text-content">
               Delete your account?
             </h3>
-            <p className="mt-2 text-sm text-slate-600">
+            <p className="mt-2 text-small text-content-muted">
               This cannot be undone. Your files will be removed from storage and you will not be able to sign in again. Your profile row is kept internally for audit purposes.
             </p>
-            <label htmlFor="delete-pwd" className="mt-4 mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="delete-pwd" className="mt-4 mb-2 block text-small font-medium text-content-muted">
               Confirm with your password
             </label>
             <input
@@ -266,15 +269,15 @@ export default function Profile() {
               type="password"
               value={deletePassword}
               onChange={(e) => setDeletePassword(e.target.value)}
-              className="mb-2 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-slate-800"
+              className="mb-2 w-full rounded-xl border border-surface-border bg-surface-muted/50 px-4 py-3 text-content"
               autoComplete="current-password"
             />
-            {deleteError ? <p className="mb-2 text-sm text-red-600">{deleteError}</p> : null}
-            <div className="mt-4 flex flex-wrap justify-end gap-2">
+            {deleteError ? <p className="mb-2 text-small text-red-300">{deleteError}</p> : null}
+            <div className="mt-6 flex flex-wrap justify-end gap-4">
               <button
                 type="button"
                 onClick={() => setShowDeleteModal(false)}
-                className="rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+                className="rounded-xl px-6 py-3 text-small font-medium text-content-muted transition hover:bg-surface-muted/60"
               >
                 Cancel
               </button>
@@ -282,7 +285,7 @@ export default function Profile() {
                 type="button"
                 onClick={handleDeleteAccount}
                 disabled={deleteLoading}
-                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+                className="rounded-xl bg-red-600 px-6 py-3 text-small font-semibold text-white hover:bg-red-500 disabled:opacity-60"
               >
                 {deleteLoading ? 'Deleting…' : 'Delete my account'}
               </button>

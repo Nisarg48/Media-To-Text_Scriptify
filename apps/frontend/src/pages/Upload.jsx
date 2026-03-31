@@ -94,21 +94,21 @@ export default function Upload() {
 
   return (
     <div className="mx-auto max-w-lg animate-fade-in pb-12 pt-2">
-      <h1 className="mb-6 text-2xl font-bold text-slate-800">Upload media</h1>
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xl sm:p-8">
+      <h1 className="mb-6 text-h2 font-bold text-content">Upload media</h1>
+      <div className="rounded-2xl border border-surface-border bg-surface/90 p-6 shadow-glass backdrop-blur-xl sm:p-8">
         {error && (
           <div
             role="alert"
-            className="mb-6 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 animate-shake"
+            className="mb-6 flex items-center gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-small text-red-200 animate-shake"
           >
-            <span className="shrink-0 text-red-500" aria-hidden>⚠</span>
+            <span className="shrink-0 text-red-400" aria-hidden>⚠</span>
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="upload-file" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="upload-file" className="mb-2 block text-small font-medium text-content-muted">
               File (audio or video)
             </label>
             <input
@@ -117,10 +117,10 @@ export default function Upload() {
               accept="audio/*,video/*"
               onChange={handleFileChange}
               disabled={loading}
-              className="w-full rounded-xl border border-slate-300 bg-slate-50/50 px-4 py-3 text-slate-800 file:mr-4 file:rounded-lg file:border-0 file:bg-emerald-500 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white file:transition hover:file:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:opacity-60"
+              className="w-full rounded-xl border border-surface-border bg-surface-muted/50 px-4 py-3 text-content file:mr-4 file:rounded-lg file:border-0 file:bg-accent file:px-4 file:py-2 file:text-small file:font-medium file:text-accent-foreground file:transition hover:file:brightness-110 focus:outline-none focus:ring-2 focus:ring-accent/25 disabled:opacity-60"
             />
             {file && (
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-2 text-xs text-content-subtle">
                 {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
               </p>
             )}
@@ -146,22 +146,22 @@ export default function Upload() {
           />
 
           {loading && uploadProgress < 100 && (
-            <div className="space-y-1">
-              <div className="h-2 rounded-full bg-slate-200">
+            <div className="space-y-2">
+              <div className="h-2 rounded-full bg-surface-muted">
                 <div
-                  className="h-2 rounded-full bg-emerald-500 transition-all duration-300"
+                  className="h-2 rounded-full bg-accent transition-all duration-300"
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>
-              <p className="text-xs text-slate-500">Uploading… {uploadProgress}%</p>
+              <p className="text-xs text-content-subtle">Uploading… {uploadProgress}%</p>
             </div>
           )}
 
-          <div className="flex gap-3">
+          <div className="flex gap-4">
             <button
               type="submit"
               disabled={loading || !file}
-              className="flex-1 rounded-xl bg-emerald-500 py-3.5 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:bg-emerald-600 hover:shadow-lg hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-60 disabled:pointer-events-none active:scale-[0.99]"
+              className="flex-1 rounded-xl bg-accent py-4 text-small font-semibold text-accent-foreground shadow-glow-sm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-canvas disabled:pointer-events-none disabled:opacity-60 active:scale-[0.99]"
             >
               {loading ? 'Uploading…' : 'Upload'}
             </button>
@@ -169,7 +169,7 @@ export default function Upload() {
               type="button"
               onClick={() => navigate('/dashboard')}
               disabled={loading}
-              className="rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-sm font-medium text-slate-700 transition-all duration-200 hover:bg-slate-50 disabled:opacity-60"
+              className="rounded-xl border border-surface-border bg-surface-muted/80 px-6 py-4 text-small font-medium text-content-muted transition hover:border-accent/30 hover:text-content disabled:opacity-60"
             >
               Cancel
             </button>

@@ -10,7 +10,7 @@ function ControlButton({ onClick, title, shortcut, icon, className = '' }) {
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-lg p-2 text-slate-300 transition-all duration-200 hover:bg-white/15 hover:text-white hover:scale-105 active:scale-95 ${className}`}
+      className={`rounded-lg p-2 text-content-muted transition-all duration-200 hover:bg-white/15 hover:text-white hover:scale-105 active:scale-95 ${className}`}
       title={`${title} (${shortcut})`}
     >
       {icon}
@@ -269,21 +269,21 @@ export default function SimpleVideoPlayer({
 
       {/* VLC-style control bar - z-30 so fullscreen button stays clickable */}
       <div
-        className="relative z-30 flex shrink-0 flex-col gap-2 border-t border-slate-600 bg-gradient-to-t from-slate-900 to-slate-800 px-4 py-3"
+        className="relative z-30 flex shrink-0 flex-col gap-2 border-t border-white/10 bg-gradient-to-t from-canvas to-canvas-elevated px-4 py-4"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Progress bar: green fill + thumb */}
         <div
           ref={progressBarRef}
-          className="group relative h-2 w-full cursor-pointer rounded-full bg-slate-600 transition hover:h-2.5"
+          className="group relative h-2 w-full cursor-pointer rounded-full bg-white/20 transition hover:h-3"
           onClick={handleProgressClick}
         >
           <div
-            className="absolute inset-y-0 left-0 rounded-full bg-emerald-500 transition-all duration-150"
+            className="absolute inset-y-0 left-0 rounded-full bg-accent transition-all duration-150"
             style={{ width: `${progressPercent}%` }}
           />
           <div
-            className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-emerald-500 shadow-md transition-all group-hover:h-4 group-hover:w-4"
+            className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-accent shadow-glow-sm transition-all group-hover:h-4 group-hover:w-4"
             style={{ left: `${progressPercent}%` }}
           />
         </div>
@@ -316,27 +316,27 @@ export default function SimpleVideoPlayer({
             />
           </div>
 
-          <span className="text-sm text-slate-400 tabular-nums">
+          <span className="text-small text-content-muted tabular-nums">
             {formatTime(currentTime)} / {formatTime(duration)}
           </span>
 
           <div className="flex items-center gap-1">
             {/* Subtitle font size */}
-            <div className="flex items-center rounded-lg bg-slate-700/50 px-1">
+            <div className="flex items-center rounded-lg bg-white/10 px-2">
               <button
                 type="button"
                 onClick={() => setSubtitleFontIndex((i) => Math.max(0, i - 1))}
-                className="rounded p-1.5 text-slate-400 hover:bg-white/10 hover:text-white"
+                className="rounded p-2 text-content-muted hover:bg-white/10 hover:text-white"
                 title="Decrease subtitle size"
                 aria-label="Decrease subtitle size"
               >
                 <span className="text-sm font-bold">A−</span>
               </button>
-              <span className="mx-1 text-xs text-slate-500">|</span>
+              <span className="mx-1 text-xs text-content-subtle">|</span>
               <button
                 type="button"
                 onClick={() => setSubtitleFontIndex((i) => Math.min(FONT_SIZES.length - 1, i + 1))}
-                className="rounded p-1.5 text-slate-400 hover:bg-white/10 hover:text-white"
+                className="rounded p-2 text-content-muted hover:bg-white/10 hover:text-white"
                 title="Increase subtitle size"
                 aria-label="Increase subtitle size"
               >
@@ -349,7 +349,7 @@ export default function SimpleVideoPlayer({
                 type="button"
                 onPointerDown={handleFullscreenPointerDown}
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                className="cursor-pointer select-none rounded-lg p-2 text-slate-300 transition-all duration-200 hover:bg-white/15 hover:text-white hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-white/50"
+                className="cursor-pointer select-none rounded-lg p-2 text-content-muted transition-all duration-200 hover:bg-white/15 hover:text-white hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-accent/50"
                 title={isFullscreen ? 'Exit fullscreen (F or Esc)' : 'Fullscreen (F)'}
                 aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
               >
