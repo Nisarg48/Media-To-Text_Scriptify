@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }) => {
         setToken(newToken);
         const decoded = decodeToken(newToken);
         setUser(decoded);
-        navigate(nextPath || '/dashboard', { replace: true });
+        navigate(nextPath || '/dashboard/upload', { replace: true });
     };
 
     const logout = () => {

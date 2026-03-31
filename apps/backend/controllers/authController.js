@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Subscription = require('../models/Subscription');
 const { logSubscriptionEvent } = require('../services/subscriptionAuditService');
+const { purgeUserMediaAndRelatedStorage } = require('../services/userAccountPurgeService');
 
 /**
  * Derive role from email pattern:
@@ -31,13 +32,14 @@ const register = async (req, res) => {
     const planChoice = initialPlan === 'pro' ? 'pro' : 'free';
 
     try {
-        let user = await User.findOne({ email });
-        if (user) {
+        const emailNorm = email.toLowerCase();
+        let user = await User.findOne({ email: emailNorm });
+        if (user && !user.deletedAt) {
             return res.status(400).json({ errors: [{ msg: 'User already exists' }] });
         }
 
-        const role = getRoleFromEmail(email);
-        user = new User({ name, email, password, role });
+        const role = getRoleFromEmail(emailNorm);
+        user = new User({ name, email: emailNorm, password, role });
 
         const salt = await bcrypt.genSalt(10);
         user.password = await bcrypt.hash(password, salt);
@@ -86,8 +88,9 @@ const login = async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        let user = await User.findOne({ email });
-        if (!user) {
+        const emailNorm = email.toLowerCase();
+        let user = await User.findOne({ email: emailNorm });
+        if (!user || user.deletedAt) {
             return res.status(400).json({ errors: [{ msg: 'Invalid Credentials' }] });
         }
 
@@ -112,4 +115,117 @@ const login = async (req, res) => {
     }
 };
 
-module.exports = { register, login };
+// @route   GET /api/auth/me
+// @desc    Current user profile (no password)
+// @access  Private
+const getMe = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id).select('name email role createdAt');
+        if (!user) {
+            return res.status(401).json({ msg: 'Account is inactive or deleted' });
+        }
+        return res.json({
+            id: user._id.toString(),
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            createdAt: user.createdAt,
+        });
+    } catch (err) {
+        console.error('authController.getMe:', err.message);
+        return res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+// @route   PATCH /api/auth/me
+// @desc    Update display name
+// @access  Private
+const updateProfile = async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user || user.deletedAt) {
+            return res.status(401).json({ msg: 'Account is inactive or deleted' });
+        }
+        user.name = String(req.body.name).trim();
+        await user.save();
+        return res.json({
+            id: user._id.toString(),
+            name: user.name,
+            email: user.email,
+            role: user.role,
+        });
+    } catch (err) {
+        console.error('authController.updateProfile:', err.message);
+        return res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+// @route   POST /api/auth/change-password
+// @access  Private
+const changePassword = async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { newPassword } = req.body;
+
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user || user.deletedAt) {
+            return res.status(401).json({ msg: 'Account is inactive or deleted' });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(newPassword, salt);
+        await user.save();
+
+        return res.json({ msg: 'Password updated successfully' });
+    } catch (err) {
+        console.error('authController.changePassword:', err.message);
+        return res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+// @route   POST /api/auth/delete-account
+// @desc    Purge user media from storage, soft-delete all media rows, soft-delete user (retain DB row)
+// @access  Private
+const deleteAccount = async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { password } = req.body;
+
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user || user.deletedAt) {
+            return res.status(401).json({ msg: 'Account is inactive or deleted' });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ msg: 'Password is incorrect' });
+        }
+
+        await purgeUserMediaAndRelatedStorage(user._id);
+
+        user.deletedAt = new Date();
+        await user.save();
+
+        return res.json({
+            msg: 'Your account has been closed. Your profile is retained for our records; you can no longer sign in.',
+        });
+    } catch (err) {
+        console.error('authController.deleteAccount:', err.message);
+        return res.status(500).json({ msg: 'Server error' });
+    }
+};
+
+module.exports = { register, login, getMe, updateProfile, changePassword, deleteAccount };

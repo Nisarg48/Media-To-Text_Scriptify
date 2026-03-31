@@ -1,10 +1,33 @@
-import { Link, Outlet, useNavigate } from 'react-router-dom';
-import { useContext } from 'react';
+import { Link, Outlet, useLocation } from 'react-router-dom';
+import { useContext, useEffect, useState } from 'react';
 import { AuthContext } from '../context/AuthContext';
+import apiClient from '../api/client';
 
 export default function DashboardLayout() {
-  const { logout, user } = useContext(AuthContext);
-  const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
+  const location = useLocation();
+  const [displayName, setDisplayName] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    function loadName() {
+      apiClient
+        .get('/auth/me')
+        .then(({ data }) => {
+          if (!cancelled && data?.name) setDisplayName(data.name);
+        })
+        .catch(() => {});
+    }
+    loadName();
+    const onProfileUpdated = () => loadName();
+    window.addEventListener('scriptify:profile-updated', onProfileUpdated);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('scriptify:profile-updated', onProfileUpdated);
+    };
+  }, [location.pathname]);
+
+  const initial = (displayName || user?.id || '?').trim().charAt(0).toUpperCase();
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-gradient-to-br from-slate-50 via-white to-emerald-50/30">
@@ -44,16 +67,14 @@ export default function DashboardLayout() {
               Admin
             </Link>
           )}
-          <button
-            type="button"
-            onClick={() => {
-              logout();
-              navigate('/', { replace: true });
-            }}
-            className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 transition-all duration-200 hover:bg-slate-200 hover:text-slate-900"
+          <Link
+            to="/dashboard/profile"
+            title="Profile"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-sm font-bold text-white shadow-md ring-2 ring-white transition hover:ring-emerald-200 hover:brightness-110"
           >
-            Log out
-          </button>
+            <span aria-hidden>{initial}</span>
+            <span className="sr-only">Profile</span>
+          </Link>
         </nav>
       </header>
 

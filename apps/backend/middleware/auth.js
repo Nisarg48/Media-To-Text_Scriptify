@@ -1,6 +1,7 @@
 const { verify } = require('jsonwebtoken');
+const User = require('../models/User');
 
-const auth = (req, res, next) => {
+const auth = async (req, res, next) => {
     const authHeader = req.header('Authorization');
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -15,7 +16,17 @@ const auth = (req, res, next) => {
 
     try {
         const decoded = verify(token, process.env.JWT_SECRET);
-        req.user = decoded.user;
+        const userId = decoded.user?.id;
+        if (!userId) {
+            return res.status(401).json({ msg: 'Token is not valid' });
+        }
+
+        const user = await User.findById(userId).select('role deletedAt');
+        if (!user || user.deletedAt) {
+            return res.status(401).json({ msg: 'Account is inactive or deleted' });
+        }
+
+        req.user = { id: user._id.toString(), role: user.role };
         next();
     } catch (error) {
         res.status(401).json({ msg: 'Token is not valid' });

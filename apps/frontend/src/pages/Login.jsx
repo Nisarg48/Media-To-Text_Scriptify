@@ -1,7 +1,8 @@
 import { useState, useContext, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/client';
+import PasswordField from '../components/PasswordField';
 
 const getErrorMessage = (err) => {
   const data = err.response?.data;
@@ -14,16 +15,15 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { token, login } = useContext(AuthContext);
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const next = searchParams.get('next') || '/dashboard';
+  const defaultAfterLoginPath = '/dashboard/upload';
 
   useEffect(() => {
     if (token) {
-      navigate(next.startsWith('/') ? next : `/dashboard`, { replace: true });
+      navigate(defaultAfterLoginPath, { replace: true });
     }
-  }, [token, next, navigate]);
+  }, [token, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,7 +31,7 @@ const Login = () => {
     setLoading(true);
     try {
       const res = await apiClient.post('/auth/login', formData);
-      login(res.data.token, next);
+      login(res.data.token, defaultAfterLoginPath);
     } catch (err) {
       setError(getErrorMessage(err));
       setLoading(false);
@@ -77,19 +77,15 @@ const Login = () => {
                 className="w-full rounded-xl border border-slate-300 bg-slate-50/50 px-4 py-3 text-slate-800 placeholder-slate-400 outline-none transition duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:bg-white sm:py-3.5"
               />
             </div>
-            <div>
-              <label htmlFor="login-password" className="sr-only">Password</label>
-              <input
-                id="login-password"
-                type="password"
-                required
-                autoComplete="current-password"
-                placeholder="Password"
-                value={formData.password}
-                onChange={(e) => setFormData((p) => ({ ...p, password: e.target.value }))}
-                className="w-full rounded-xl border border-slate-300 bg-slate-50/50 px-4 py-3 text-slate-800 placeholder-slate-400 outline-none transition duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:bg-white sm:py-3.5"
-              />
-            </div>
+            <PasswordField
+              id="login-password"
+              label="Password"
+              required
+              autoComplete="current-password"
+              placeholder="Password"
+              value={formData.password}
+              onChange={(e) => setFormData((p) => ({ ...p, password: e.target.value }))}
+            />
 
             <button
               type="submit"

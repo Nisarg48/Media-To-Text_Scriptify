@@ -12,6 +12,7 @@ import Upload from './pages/Upload';
 import MediaDetail from './pages/MediaDetail';
 import Pricing from './pages/Pricing';
 import Billing from './pages/Billing';
+import Profile from './pages/Profile';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminMedia from './pages/admin/AdminMedia';
 import AdminMediaDetail from './pages/admin/AdminMediaDetail';
@@ -40,6 +41,7 @@ function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="dashboard/upload" element={<Upload />} />
             <Route path="dashboard/billing" element={<Billing />} />
+            <Route path="dashboard/profile" element={<Profile />} />
             <Route path="media/:id" element={<MediaDetail />} />
           </Route>
 

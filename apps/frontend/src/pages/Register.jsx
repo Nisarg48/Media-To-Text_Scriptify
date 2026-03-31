@@ -2,6 +2,7 @@ import { useState, useContext, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import apiClient from '../api/client';
+import PasswordField from '../components/PasswordField';
 
 const getErrorMessage = (err) => {
   const data = err.response?.data;
@@ -30,7 +31,7 @@ const Register = () => {
 
   useEffect(() => {
     if (token) {
-      navigate('/dashboard', { replace: true });
+      navigate('/dashboard/upload', { replace: true });
     }
   }, [token, navigate]);
 
@@ -60,7 +61,7 @@ const Register = () => {
         return;
       }
 
-      login(data.token, '/dashboard');
+      login(data.token, '/dashboard/upload');
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -147,19 +148,15 @@ const Register = () => {
                 className="w-full rounded-xl border border-slate-300 bg-slate-50/50 px-4 py-3 text-slate-800 placeholder-slate-400 outline-none transition duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:bg-white sm:py-3.5"
               />
             </div>
-            <div>
-              <label htmlFor="register-password" className="sr-only">Password</label>
-              <input
-                id="register-password"
-                type="password"
-                required
-                autoComplete="new-password"
-                placeholder="Password (min 8 characters)"
-                value={formData.password}
-                onChange={(e) => setFormData((p) => ({ ...p, password: e.target.value }))}
-                className="w-full rounded-xl border border-slate-300 bg-slate-50/50 px-4 py-3 text-slate-800 placeholder-slate-400 outline-none transition duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:bg-white sm:py-3.5"
-              />
-            </div>
+            <PasswordField
+              id="register-password"
+              label="Password"
+              required
+              autoComplete="new-password"
+              placeholder="Password (min 8 characters)"
+              value={formData.password}
+              onChange={(e) => setFormData((p) => ({ ...p, password: e.target.value }))}
+            />
 
             <button
               type="submit"
