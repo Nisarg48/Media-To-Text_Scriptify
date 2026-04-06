@@ -144,3 +144,5 @@ apps/backend/.mongoms-binaries/
 **/__pycache__/
 **/*.pyc
 .venv-docx/
+.impeccable.md
+.cursor/

@@ -7,11 +7,11 @@ import { getFriendlyErrorMessage } from '../utils/friendlyError';
 import ProcessingTimeline from '../components/ProcessingTimeline';
 import SimpleVideoPlayer from '../components/SimpleVideoPlayer';
 const STATUS_CONFIG = {
-  UPLOADING: { label: 'Uploading', className: 'border border-slate-500/40 bg-slate-700/50 text-slate-200' },
-  UPLOADED: { label: 'Queued', className: 'border border-slate-500/40 bg-slate-700/50 text-slate-200' },
-  PROCESSING: { label: 'Processing', className: 'border border-amber-500/35 bg-amber-500/15 text-amber-200' },
-  COMPLETED: { label: 'Done', className: 'border border-accent/40 bg-accent-muted text-accent' },
-  FAILED: { label: 'Failed', className: 'border border-red-500/35 bg-red-500/15 text-red-300' },
+  UPLOADING: { label: 'Uploading', className: 'border border-status-neutral-border bg-status-neutral-bg text-status-neutral-text' },
+  UPLOADED:  { label: 'Queued',    className: 'border border-status-neutral-border bg-status-neutral-bg text-status-neutral-text' },
+  PROCESSING:{ label: 'Processing',className: 'border border-status-warn-border bg-status-warn-bg text-status-warn-text' },
+  COMPLETED: { label: 'Done',   className: 'border border-accent/40 bg-accent-muted text-accent' },
+  FAILED:    { label: 'Failed', className: 'border border-status-fail-border bg-status-fail-bg text-status-fail-text' },
 };
 
 const POLL_INTERVAL_MS = 3000;
@@ -375,7 +375,7 @@ export default function MediaDetail() {
 
   if (!media) return null;
 
-  const statusInfo = STATUS_CONFIG[media.status] || { label: media.status, className: 'border border-slate-500/40 bg-slate-700/50 text-slate-200' };
+  const statusInfo = STATUS_CONFIG[media.status] || { label: media.status, className: 'border border-status-neutral-border bg-status-neutral-bg text-status-neutral-text' };
   const isVideo = media.mediaType === 'VIDEO';
   const canShowPlayer = media.status === 'COMPLETED' && playbackUrl;
   const showTimeline = ['UPLOADING', 'UPLOADED', 'PROCESSING'].includes(media.status);

@@ -31,6 +31,14 @@ export default function DashboardLayout() {
 
   return (
     <div className="relative flex min-h-screen w-full flex-col bg-transparent">
+      {/* Skip-nav for keyboard users */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-accent-foreground"
+      >
+        Skip to main content
+      </a>
+
       <div
         className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(34,211,238,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.03)_1px,transparent_1px)] bg-[size:48px_48px]"
         aria-hidden
@@ -43,7 +51,7 @@ export default function DashboardLayout() {
         >
           Scriptify
         </Link>
-        <nav className="flex items-center gap-2 sm:gap-4">
+        <nav aria-label="Main navigation" className="flex items-center gap-2 sm:gap-4">
           <Link
             to="/dashboard"
             className="rounded-xl border border-surface-border bg-surface-muted/80 px-4 py-2 text-small font-medium text-content-muted transition hover:border-accent/30 hover:text-content"
@@ -81,7 +89,7 @@ export default function DashboardLayout() {
         </nav>
       </header>
 
-      <main className="relative z-0 min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-8 sm:px-8 sm:py-10">
+      <main id="main-content" className="relative z-0 min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-8 sm:px-8 sm:py-10">
         <Outlet />
       </main>
     </div>

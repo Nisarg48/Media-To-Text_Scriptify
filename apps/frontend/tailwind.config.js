@@ -26,6 +26,34 @@ export default {
           muted: "rgba(186, 198, 214, 0.92)",
           subtle: "rgba(148, 163, 184, 0.88)",
         },
+        // Semantic status palette — use these instead of raw Tailwind color strings
+        status: {
+          // success / completed
+          "done-border": "rgba(34, 197, 94, 0.35)",
+          "done-bg": "rgba(34, 197, 94, 0.12)",
+          "done-text": "#86efac",
+          // warning / processing / queued
+          "warn-border": "rgba(251, 191, 36, 0.35)",
+          "warn-bg": "rgba(251, 191, 36, 0.12)",
+          "warn-text": "#fde68a",
+          // error / failed
+          "fail-border": "rgba(239, 68, 68, 0.35)",
+          "fail-bg": "rgba(239, 68, 68, 0.12)",
+          "fail-text": "#fca5a5",
+          // neutral / uploading / queued
+          "neutral-border": "rgba(148, 163, 184, 0.25)",
+          "neutral-bg": "rgba(30, 41, 59, 0.55)",
+          "neutral-text": "#cbd5e1",
+        },
+        // Media type badges
+        mediatype: {
+          "video-border": "rgba(14, 165, 233, 0.35)",
+          "video-bg": "rgba(14, 165, 233, 0.12)",
+          "video-text": "#7dd3fc",
+          "audio-border": "rgba(139, 92, 246, 0.35)",
+          "audio-bg": "rgba(139, 92, 246, 0.12)",
+          "audio-text": "#c4b5fd",
+        },
       },
       fontFamily: {
         sans: ['"Space Grotesk"', "system-ui", "sans-serif"],

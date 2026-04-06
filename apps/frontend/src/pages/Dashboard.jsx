@@ -4,16 +4,16 @@ import axios from 'axios';
 import apiClient from '../api/client';
 
 const STATUS_CONFIG = {
-  UPLOADING: { label: 'Uploading', className: 'border border-slate-500/40 bg-slate-700/50 text-slate-200' },
-  UPLOADED: { label: 'Queued', className: 'border border-slate-500/40 bg-slate-700/50 text-slate-200' },
-  PROCESSING: { label: 'Processing', className: 'border border-amber-500/35 bg-amber-500/15 text-amber-200' },
-  COMPLETED: { label: 'Done', className: 'border border-accent/40 bg-accent-muted text-accent' },
-  FAILED: { label: 'Failed', className: 'border border-red-500/35 bg-red-500/15 text-red-300' },
+  UPLOADING: { label: 'Uploading', className: 'border border-status-neutral-border bg-status-neutral-bg text-status-neutral-text' },
+  UPLOADED:  { label: 'Queued',    className: 'border border-status-neutral-border bg-status-neutral-bg text-status-neutral-text' },
+  PROCESSING:{ label: 'Processing',className: 'border border-status-warn-border bg-status-warn-bg text-status-warn-text' },
+  COMPLETED: { label: 'Done',      className: 'border border-accent/40 bg-accent-muted text-accent' },
+  FAILED:    { label: 'Failed',    className: 'border border-status-fail-border bg-status-fail-bg text-status-fail-text' },
 };
 
 const MEDIA_TYPE_LABELS = {
-  VIDEO: { label: 'Video', className: 'border border-sky-500/35 bg-sky-500/15 text-sky-200' },
-  AUDIO: { label: 'Audio', className: 'border border-violet-500/35 bg-violet-500/15 text-violet-200' },
+  VIDEO: { label: 'Video', className: 'border border-mediatype-video-border bg-mediatype-video-bg text-mediatype-video-text' },
+  AUDIO: { label: 'Audio', className: 'border border-mediatype-audio-border bg-mediatype-audio-bg text-mediatype-audio-text' },
 };
 
 const TYPE_FILTER_OPTIONS = [
@@ -481,13 +481,14 @@ export default function Dashboard() {
         <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <h1 className="text-h2 font-bold text-content">Your media</h1>
           <div className="flex flex-wrap gap-2">
+            <label htmlFor="dashboard-search" className="sr-only">Search by filename</label>
             <input
+              id="dashboard-search"
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by filename…"
               className="min-w-[200px] flex-1 rounded-xl border border-surface-border bg-surface-muted/60 px-4 py-2 text-small text-content shadow-sm outline-none transition placeholder:text-content-subtle focus:border-accent focus:ring-2 focus:ring-accent/25 sm:max-w-xs"
-              aria-label="Search media by filename"
             />
             <select
               value={statusFilter}
@@ -511,6 +512,7 @@ export default function Dashboard() {
                 key={opt.value}
                 type="button"
                 onClick={() => setTypeFilter(opt.value)}
+                aria-pressed={typeFilter === opt.value}
                 className={`rounded-lg px-4 py-2 text-small font-medium transition-all duration-200 ${
                   typeFilter === opt.value
                     ? 'bg-surface text-accent ring-1 ring-accent/30'
@@ -558,8 +560,8 @@ export default function Dashboard() {
           )}
           <ul className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-3 ${loading && media.length > 0 ? 'opacity-70' : ''}`}>
             {filteredMedia.map((item, i) => {
-              const statusInfo = STATUS_CONFIG[item.status] || { label: item.status, className: 'border border-slate-500/40 bg-slate-700/50 text-slate-200' };
-              const typeInfo = MEDIA_TYPE_LABELS[item.mediaType] || { label: item.mediaType, className: 'border border-slate-500/40 bg-slate-700/50 text-slate-200' };
+              const statusInfo = STATUS_CONFIG[item.status] || { label: item.status, className: 'border border-status-neutral-border bg-status-neutral-bg text-status-neutral-text' };
+              const typeInfo = MEDIA_TYPE_LABELS[item.mediaType] || { label: item.mediaType, className: 'border border-status-neutral-border bg-status-neutral-bg text-status-neutral-text' };
               return (
                 <li key={item._id} className="animate-fade-in-up" style={{ animationDelay: `${i * 0.05}s`, animationFillMode: 'backwards' }}>
                   <RouterLink
