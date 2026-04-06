@@ -4,7 +4,7 @@
 
 services:
   scriptify-backend:
-    image: nisarg48/scriptify-backend:1.0.0
+    image: nisarg48/scriptify-backend:latest
     container_name: scriptify-backend
     build:
       context: .
@@ -13,7 +13,7 @@ services:
       - "${PORT:-5000}:${PORT:-5000}"
     environment:
       PORT: ${PORT:-5000}
-      MONGODB_URI: ${MONGODB_URI}
+      MONGODB_URL: ${MONGODB_URL}
       JWT_SECRET: ${JWT_SECRET}
       # Billing (Stripe) — must be set in repo root .env; .env is not copied into the image
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
@@ -32,7 +32,7 @@ services:
       - scriptify-minio
 
   scriptify-frontend:
-    image: nisarg48/scriptify-frontend:1.0.0
+    image: nisarg48/scriptify-frontend:latest
     container_name: scriptify-frontend
     build:
       context: .
@@ -45,7 +45,7 @@ services:
       - scriptify-backend
 
   scriptify-worker:
-    image: nisarg48/scriptify-worker:1.0.0
+    image: nisarg48/scriptify-worker:latest
     container_name: scriptify-worker
     build:
       context: ./apps/ai_worker
@@ -74,6 +74,8 @@ services:
       - "15673:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    environment:
+      RABBITMQ_ENABLED_PLUGINS: rabbitmq_management,rabbitmq_prometheus
     networks:
       default:
         aliases:
@@ -124,6 +126,12 @@ services:
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
       GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SMTP_ENABLED: "true"
+      GF_SMTP_HOST: ${GRAFANA_SMTP_HOST:-smtp.gmail.com:587}
+      GF_SMTP_USER: ${GRAFANA_SMTP_USER:-}
+      GF_SMTP_PASSWORD: ${GRAFANA_SMTP_PASSWORD:-}
+      GF_SMTP_FROM_ADDRESS: ${GRAFANA_SMTP_USER:-nisargdpatel48@gmail.com}
+      GF_SMTP_FROM_NAME: Scriptify Monitoring
     depends_on:
       - scriptify-prometheus
 

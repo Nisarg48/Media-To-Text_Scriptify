@@ -6,6 +6,7 @@ import apiClient from '../api/client';
 import { getFriendlyErrorMessage } from '../utils/friendlyError';
 import ProcessingTimeline from '../components/ProcessingTimeline';
 import SimpleVideoPlayer from '../components/SimpleVideoPlayer';
+import MarqueeTitle from '../components/MarqueeTitle';
 
 const STATUS_CONFIG = {
   UPLOADING: { label: 'Uploading', className: 'border border-slate-500/40 bg-slate-700/50 text-slate-200' },
@@ -386,11 +387,12 @@ export default function MediaDetail() {
   return (
     <div className="mx-auto max-w-7xl animate-fade-in space-y-10 pb-12">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
+        <div className="min-w-0 flex-1">
           <Link to="/dashboard" className="text-small font-medium text-content-subtle transition hover:text-accent">← Dashboard</Link>
-          <h1 className="mt-2 truncate text-h3 font-bold text-content sm:text-h2" title={media.filename}>
-            {media.filename}
-          </h1>
+          <MarqueeTitle
+            text={media.filename}
+            className="mt-2 text-h3 font-bold text-content sm:text-h2"
+          />
           <span className={`mt-2 inline-block rounded-md px-2 py-1 text-xs font-medium ${statusInfo.className}`}>
             {statusInfo.label}
           </span>
@@ -436,7 +438,7 @@ export default function MediaDetail() {
       {/* Processing: static placeholder only (no video = no reload) */}
       {!canShowPlayer && (
         <div className="overflow-hidden rounded-xl border border-surface-border bg-surface-muted/40 p-2 shadow-glass">
-          <div className="flex aspect-video w-full flex-col items-center justify-center rounded-lg bg-gradient-to-br from-canvas-elevated to-slate-800/80">
+          <div className="flex aspect-video w-full max-h-64 flex-col items-center justify-center rounded-lg bg-gradient-to-br from-canvas-elevated to-slate-800/80">
             <div className="text-content-muted transition transform duration-300 ease-out" style={{ fontSize: '3rem' }} aria-hidden>
               {isVideo ? '🎬' : '🎵'}
             </div>

@@ -2,7 +2,7 @@
 set -e
 
 if [ ! -f .env ]; then
-    echo "Error: .env file not found. Please copy .env.example to .env and configure MONGODB_URI to point to your Atlas database."
+    echo "Error: .env file not found. Please copy .env.example to .env and configure MONGODB_URL to point to your Atlas database."
     exit 1
 fi
 

@@ -6,8 +6,12 @@ scrape_configs:
   - job_name: scriptify-backend
     static_configs:
       - targets: ['scriptify-backend:5000']
+        labels:
+          service: backend
     metrics_path: /metrics
 
   - job_name: rabbitmq
     static_configs:
       - targets: ['scriptify-rabbitmq:15692']
+        labels:
+          service: rabbitmq

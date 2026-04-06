@@ -2,7 +2,7 @@
 setlocal
 
 if not exist .env (
-    echo Error: .env file not found. Please copy .env.example to .env and configure MONGODB_URI to point to your Atlas database.
+    echo Error: .env file not found. Please copy .env.example to .env and configure MONGODB_URL to point to your Atlas database.
     exit /b 1
 )
 
