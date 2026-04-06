@@ -4,7 +4,7 @@ from minio import Minio
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 from datetime import datetime, timezone
-from urllib.parse import unquote
+from urllib.parse import unquote, urlparse
 from google import genai
 
 # Load environment variables
@@ -13,7 +13,10 @@ load_dotenv()
 RABBITMQ_URL = os.getenv('RABBITMQ_URL')
 RABBITMQ_QUEUE = os.getenv('RABBITMQ_QUEUE')
 
-STORAGE_ENDPOINT = os.getenv('STORAGE_ENDPOINT')
+_ep_raw = os.getenv('STORAGE_ENDPOINT', '')
+_ep_parsed = urlparse(_ep_raw)
+STORAGE_ENDPOINT = _ep_parsed.netloc if _ep_parsed.netloc else _ep_raw
+STORAGE_SECURE   = _ep_parsed.scheme == 'https'
 STORAGE_ACCESS_KEY = os.getenv('STORAGE_ACCESS_KEY')
 STORAGE_SECRET_KEY = os.getenv('STORAGE_SECRET_KEY')
 STORAGE_BUCKET_NAME = os.getenv('STORAGE_BUCKET_NAME')
@@ -49,7 +52,7 @@ storage_client = Minio(
     endpoint=STORAGE_ENDPOINT,
     access_key=STORAGE_ACCESS_KEY,
     secret_key=STORAGE_SECRET_KEY,
-    secure=False
+    secure=STORAGE_SECURE,
 )
 
 # Create a local 'temp' folder to hold file while processing

@@ -12,12 +12,20 @@ const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const { getHealth } = require('./controllers/healthController');
 const { authLimiter, apiLimiter } = require('./middleware/rateLimits');
 const { apiRequestTiming } = require('./middleware/requestTiming');
+const { metricsMiddleware, registry } = require('./middleware/metrics');
 
 function createApp() {
     const app = express();
 
     app.use(cors());
     app.use(apiRequestTiming);
+    app.use(metricsMiddleware);
+
+    // Prometheus metrics — no auth, scraped by Prometheus inside the Docker network
+    app.get('/metrics', async (req, res) => {
+        res.set('Content-Type', registry.contentType);
+        res.end(await registry.metrics());
+    });
 
     // Stripe webhook must receive raw body — register before express.json()
     app.use('/api/subscriptions', subscriptionRoutes);

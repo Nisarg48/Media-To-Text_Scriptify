@@ -98,6 +98,37 @@ services:
         aliases:
           - minio
 
+  scriptify-prometheus:
+    image: prom/prometheus:latest
+    container_name: scriptify-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=7d'
+    depends_on:
+      - scriptify-backend
+
+  scriptify-grafana:
+    image: grafana/grafana:latest
+    container_name: scriptify-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    depends_on:
+      - scriptify-prometheus
+
 volumes:
   rabbitmq_data:
   minio_data:
+  prometheus_data:
+  grafana_data:

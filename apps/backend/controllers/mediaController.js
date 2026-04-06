@@ -1,6 +1,6 @@
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const { GetObjectCommand, PutObjectCommand } = require('@aws-sdk/client-s3');
-const { s3Client } = require('../config/storage');
+const { s3Client, s3PublicClient } = require('../config/storage');
 const { v4: uuidv4 } = require('uuid');
 const Media = require('../models/Media');
 const { sendToQueue } = require('../config/rabbitmq');
@@ -57,7 +57,7 @@ const getUploadUrl = async (req, res) => {
             ContentType: fileType,
         });
 
-        const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 900 });
+        const uploadUrl = await getSignedUrl(s3PublicClient, command, { expiresIn: 900 });
 
         res.json({ uploadUrl, fileKey });
 
@@ -326,7 +326,7 @@ const getPlaybackUrl = async (req, res) => {
             ResponseContentDisposition: `inline; filename="${media.filename}"`,
         });
 
-        const playbackUrl = await getSignedUrl(s3Client, command, { expiresIn: 7200 });
+        const playbackUrl = await getSignedUrl(s3PublicClient, command, { expiresIn: 7200 });
 
         res.status(200).json({ 
             msg: "Playback URL generated successfully",
