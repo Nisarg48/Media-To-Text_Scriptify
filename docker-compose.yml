@@ -74,8 +74,7 @@ services:
       - "15673:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
-    environment:
-      RABBITMQ_ENABLED_PLUGINS: rabbitmq_management,rabbitmq_prometheus
+      - ./monitoring/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
     networks:
       default:
         aliases:

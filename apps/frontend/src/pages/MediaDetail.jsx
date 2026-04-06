@@ -6,8 +6,6 @@ import apiClient from '../api/client';
 import { getFriendlyErrorMessage } from '../utils/friendlyError';
 import ProcessingTimeline from '../components/ProcessingTimeline';
 import SimpleVideoPlayer from '../components/SimpleVideoPlayer';
-import MarqueeTitle from '../components/MarqueeTitle';
-
 const STATUS_CONFIG = {
   UPLOADING: { label: 'Uploading', className: 'border border-slate-500/40 bg-slate-700/50 text-slate-200' },
   UPLOADED: { label: 'Queued', className: 'border border-slate-500/40 bg-slate-700/50 text-slate-200' },
@@ -389,10 +387,7 @@ export default function MediaDetail() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="min-w-0 flex-1">
           <Link to="/dashboard" className="text-small font-medium text-content-subtle transition hover:text-accent">← Dashboard</Link>
-          <MarqueeTitle
-            text={media.filename}
-            className="mt-2 text-h3 font-bold text-content sm:text-h2"
-          />
+          <h1 className="mt-2 break-words text-h3 font-bold text-content sm:text-h2">{media.filename}</h1>
           <span className={`mt-2 inline-block rounded-md px-2 py-1 text-xs font-medium ${statusInfo.className}`}>
             {statusInfo.label}
           </span>

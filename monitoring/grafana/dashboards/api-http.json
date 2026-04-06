@@ -66,7 +66,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(scriptify_http_requests_total{status=~\"[45]..\"}[5m])) / sum(rate(scriptify_http_requests_total[5m]))",
+          "expr": "(sum(rate(scriptify_http_requests_total{status=~\"[45]..\"}[5m])) or vector(0)) / sum(rate(scriptify_http_requests_total[5m]))",
           "legendFormat": "Error rate",
           "refId": "A"
         }
