@@ -1,0 +1,59 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0" version="29.6.6">
+  <diagram id="Fig62" name="Fig 6.2 Media states">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="0" fold="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="t" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontStyle=1;fontSize=16;" value="Fig 6.2 — Media document status (MongoDB enum) — processing lifecycle" vertex="1">
+          <mxGeometry height="40" width="840" x="80" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="start" parent="1" style="ellipse;html=1;fillColor=#000000;strokeColor=#000000;strokeWidth=3;fontSize=14;spacingTop=5;spacingLeft=0;" value="" vertex="1">
+          <mxGeometry height="24" width="24" x="120" y="145.5" as="geometry" />
+        </mxCell>
+        <mxCell id="s2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=14;strokeWidth=3;spacingTop=0;spacingLeft=0;" value="UPLOADED&#xa;POST /finalize creates doc&#xa;+ job enqueued" vertex="1">
+          <mxGeometry height="80" width="160" x="360" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="s3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;strokeWidth=3;fontSize=14;spacingTop=0;spacingLeft=0;verticalAlign=middle;" value="PROCESSING&#xa;worker sets status" vertex="1">
+          <mxGeometry height="80" width="160" x="720" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="s4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;strokeWidth=3;fontSize=14;spacingTop=0;spacingLeft=0;" value="COMPLETED&#xa;transcript ready" vertex="1">
+          <mxGeometry height="80" width="160" x="360" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="s5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;strokeWidth=3;fontSize=14;spacingTop=0;spacingLeft=0;" value="FAILED&#xa;errorDetails set" vertex="1">
+          <mxGeometry height="80" width="160" x="720" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="e0" edge="1" parent="1" source="start" style="endArrow=block;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=3;fontSize=14;spacingTop=0;spacingLeft=0;" target="s2" value="client upload + finalize">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="s2" style="endArrow=block;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=3;fontSize=14;spacingTop=0;spacingLeft=0;" target="s3" value="worker consumes job">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="s3" style="endArrow=block;html=1;exitX=0;exitY=0.75;entryX=0.5;entryY=0;rounded=0;edgeStyle=orthogonalEdgeStyle;exitDx=0;exitDy=0;strokeWidth=3;fontSize=14;spacingTop=0;spacingLeft=0;" target="s4" value="success">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="610" y="180" />
+              <mxPoint x="610" y="240" />
+              <mxPoint x="440" y="240" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="s3" style="endArrow=block;html=1;exitX=0.75;exitY=1;entryX=0.75;entryY=0;entryDx=0;entryDy=0;strokeWidth=3;fontSize=14;spacingTop=0;spacingLeft=0;" target="s5" value="error / retry exhausted">
+          <mxGeometry relative="1" x="-0.125" as="geometry">
+            <mxPoint y="-1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="s5" style="endArrow=block;html=1;dashed=1;exitX=0.25;exitY=0;entryX=0.25;entryY=1;entryDx=0;entryDy=0;exitDx=0;exitDy=0;strokeWidth=3;fontSize=14;spacingTop=0;spacingLeft=0;" target="s3" value="admin retry → queue">
+          <mxGeometry relative="1" x="-0.375" as="geometry">
+            <mxPoint y="1" as="offset" />
+            <Array as="points">
+              <mxPoint x="760" y="300" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=center;spacingLeft=6;fontSize=10;" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;UPLOADING exists on the Media schema default but the current finalize path persists new rows as UPLOADED. Parallel-job limits count UPLOADED and PROCESSING. Soft delete uses deletedAt, not a status change.&lt;/font&gt;" vertex="1">
+          <mxGeometry height="80" width="840" x="80" y="460" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -21,9 +21,10 @@
 | Path | Role |
 |------|------|
 | `apps/frontend` | React (Vite) SPA: landing, pricing, billing, auth, dashboard, upload, media detail (player, timeline, summaries), transcript editor, admin UI. |
-| `apps/backend` | Express REST API: auth, media, transcripts, summaries, analytics, subscriptions (Stripe), admin; MongoDB, queue, S3-compatible storage, rate limits. |
+| `apps/backend` | Express REST API: auth, media, transcripts, summaries, analytics, subscriptions (Stripe), admin; MongoDB, queue, S3-compatible storage, rate limits, Prometheus metrics. |
 | `apps/ai_worker` | Python consumer: RabbitMQ → MinIO → FFmpeg → Whisper → optional Gemini → MinIO + MongoDB. |
 | `apps/shared` | Shared static data, e.g. `languages.json` (allowed target languages), imported by frontend and backend. |
+| `monitoring/` | Prometheus scrape config and Grafana provisioning: datasource, three pre-built dashboards (API HTTP, Node.js runtime, RabbitMQ), and alerting contact points. |
 
 ---
 
@@ -39,23 +40,32 @@ flowchart LR
   end
   subgraph data [Data plane]
     Mongo[(MongoDB)]
-    Queue[(Message queue)]
-    Blobs[(Object storage)]
+    Queue[(RabbitMQ)]
+    Blobs[(MinIO / Object storage)]
   end
   subgraph worker [AI worker]
     Py[Python worker]
   end
-  Browser --> Express
+  subgraph obs [Monitoring]
+    Prom[Prometheus]
+    Graf[Grafana]
+  end
+  Browser -- "REST / JSON" --> Express
+  Express -. "presigned URL" .-> Browser
+  Browser -- "direct PUT / GET" --> Blobs
   Express --> Mongo
   Express --> Queue
-  Express --> Blobs
   Queue --> Py
   Py --> Blobs
   Py --> Mongo
+  Prom -- "scrapes /metrics" --> Express
+  Prom -- "scrapes :15692" --> Queue
+  Graf --> Prom
 ```
 
-- **Browser** talks only to the **API** (and to **object storage** using short-lived URLs returned by the API).
+- **Browser** calls the API for all application operations. For file transfers, the API returns a short-lived **presigned URL**; the browser then uploads or streams **directly to MinIO** using that URL — file bytes never pass through the backend.
 - The **worker** is decoupled: it reads the same **MongoDB** and **object storage** and consumes **queue** messages; it does not receive HTTP requests from end users.
+- **Prometheus** scrapes the backend `/metrics` endpoint and RabbitMQ's Prometheus plugin; **Grafana** visualises those metrics.
 
 ---
 
@@ -357,10 +367,69 @@ Shared **language lists** come from **`apps/shared/languages.json`** so UI and A
 
 ## 20. Local development and Docker
 
-- **`.env.example`** at the repo root lists variables for backend, frontend build (**`VITE_API_BASE_URL`**), worker (**`WHISPER_MODEL`**, **`GEMINI_API_KEY`**, etc.), and Stripe.  
-- **`docker-compose.yml`** brings up backend, frontend (nginx on port **80**), worker, RabbitMQ (management UI on **15673** in the default file), and MinIO (**9000** / console **9001**). Use **`docker-compose.gpu.yml`** with **`-f`** for NVIDIA GPU overrides.  
-- **`start.sh`** / **`start.bat`** in the repo root help bootstrap local runs (see script comments).
+- **`.env.example`** at the repo root lists variables for backend, frontend build (**`VITE_API_BASE_URL`**), worker (**`WHISPER_MODEL`**, **`GEMINI_API_KEY`**, etc.), Stripe, and Grafana SMTP alerting.
+- **`docker-compose.yml`** brings up **7 services** on a shared `scriptify_net` bridge network:
+
+| Service | Host port(s) | Notes |
+|---------|-------------|-------|
+| `scriptify-frontend` | `80` | Nginx serving the React SPA |
+| `scriptify-backend` | `5000` | Express API; exposes `/metrics` for Prometheus |
+| `scriptify-worker` | — | No host port; consumes RabbitMQ queue |
+| `scriptify-rabbitmq` | `5673` (AMQP), `15673` (management UI) | RabbitMQ with Prometheus plugin enabled |
+| `scriptify-minio` | `9000` (API), `9001` (console) | Object storage; browser uploads go directly here |
+| `scriptify-prometheus` | `9090` | Scrapes backend and RabbitMQ every 15 s |
+| `scriptify-grafana` | `3000` | Pre-provisioned dashboards and alerting |
+
+- Use **`docker-compose.gpu.yml`** with **`-f`** for NVIDIA GPU overrides on the worker.
+- **`start.sh`** / **`start.bat`** in the repo root auto-detect GPU availability and launch the appropriate compose profile.
 
 ---
 
-This document describes **what** the project is and **how its parts fit together**. For **environment variables**, **Compose** layout, and **CI** behavior, see **§19–§20** and **`.env.example`**.
+## 21. Monitoring (Prometheus + Grafana)
+
+The compose stack ships a full observability layer that starts automatically with `docker compose up`.
+
+### 21.1 What is instrumented
+
+- **Backend** — every HTTP request is timed by `middleware/requestTiming.js`; counters and histograms (request count, latency buckets, error rates) are recorded in `middleware/metrics.js` using `prom-client`. All metrics are exposed at **`GET /metrics`** (Prometheus text format).
+- **RabbitMQ** — the `rabbitmq_prometheus` plugin (enabled via `monitoring/rabbitmq/enabled_plugins`) exposes queue depth, publish/deliver rates, and consumer counts at `:15692/metrics`.
+
+### 21.2 Prometheus
+
+Configuration: `monitoring/prometheus.yml`
+
+| Scrape job | Target | Path |
+|---|---|---|
+| `scriptify-backend` | `scriptify-backend:5000` | `/metrics` |
+| `rabbitmq` | `scriptify-rabbitmq:15692` | `/metrics` |
+
+Scrape interval: **15 s**. Data retention: **7 days** (set via `--storage.tsdb.retention.time=7d`).
+
+Access Prometheus at **http://localhost:9090** after starting the stack.
+
+### 21.3 Grafana dashboards
+
+Grafana is provisioned at startup — no manual setup required.
+
+| Dashboard file | What it shows |
+|---|---|
+| `api-http.json` | HTTP request rate, latency percentiles (p50/p95/p99), error rates per route |
+| `nodejs-runtime.json` | Node.js heap usage, event loop lag, GC activity |
+| `rabbitmq.json` | Queue depth, consumer count, publish and deliver rates |
+
+Access Grafana at **http://localhost:3000** (default credentials: `admin` / `admin` — change on first login).
+
+Datasource (`monitoring/grafana/provisioning/datasources/prometheus.yml`) points to `http://scriptify-prometheus:9090` and is provisioned automatically.
+
+### 21.4 Alerting
+
+Alert contact points and notification policies are provisioned from:
+
+- `monitoring/grafana/provisioning/alerting/contact-points.yaml` — defines an email contact point.
+- `monitoring/grafana/provisioning/alerting/notification-policies.yaml` — routes alerts to that contact point.
+
+SMTP credentials are configured via environment variables in `.env` (see `.env.example`: `GRAFANA_SMTP_HOST`, `GRAFANA_SMTP_USER`, `GRAFANA_SMTP_PASSWORD`).
+
+---
+
+This document describes **what** the project is and **how its parts fit together**. For **environment variables**, **Compose** layout, **CI** behavior, and **monitoring**, see **§19–§21** and **`.env.example`**.

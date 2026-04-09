@@ -1,0 +1,52 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0" version="29.6.6">
+  <diagram id="Fig52" name="Fig 5.2 ER MongoDB">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="t" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontStyle=1;fontSize=14;" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;Fig 5.3 — Entity-Relationship Diagram: Scriptify MongoDB Collections&lt;/font&gt;" vertex="1">
+          <mxGeometry height="40" width="920" x="80" y="590" as="geometry" />
+        </mxCell>
+        <mxCell id="user" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=8;verticalAlign=top;" value="&lt;b&gt;&lt;font style=&quot;font-size: 14px;&quot;&gt;users&lt;/font&gt;&lt;/b&gt;&lt;hr&gt;&lt;font style=&quot;font-size: 14px;&quot;&gt;_id (PK)&lt;br&gt;name, email (UQ)&lt;br&gt;password, role&lt;br&gt;lastLogin&lt;br&gt;createdAt, updatedAt&lt;/font&gt;" vertex="1">
+          <mxGeometry height="130" width="180" x="80" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="media" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=8;verticalAlign=top;fontSize=11;" value="&lt;b&gt;&lt;font style=&quot;font-size: 14px;&quot;&gt;media&lt;/font&gt;&lt;/b&gt;&lt;hr&gt;&lt;font style=&quot;font-size: 14px;&quot;&gt;_id (PK)&lt;br&gt;mediaUploadedBy (FK → User)&lt;br&gt;filename, sizeBytes, lengthMs&lt;br&gt;mediaType, format, status&lt;br&gt;sourceLanguage*, targetLanguage*&lt;br&gt;storage {bucket,key,format} (embedded)&lt;br&gt;derivedAudio (embedded)&lt;br&gt;errorDetails, deletedAt&lt;br&gt;timestamps&lt;/font&gt;" vertex="1">
+          <mxGeometry height="200" width="260" x="400" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="transcript" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=8;verticalAlign=top;fontSize=11;" value="&lt;b&gt;&lt;font style=&quot;font-size: 14px;&quot;&gt;transcripts&lt;/font&gt;&lt;/b&gt;&lt;hr&gt;&lt;font style=&quot;font-size: 14px;&quot;&gt;_id (PK)&lt;br&gt;mediaId (FK → Media)&lt;br&gt;plainText&lt;br&gt;jsonFile {bucket,key,...}&lt;br&gt;language, confidence*, timing*&lt;br&gt;timestamps&lt;/font&gt;" vertex="1">
+          <mxGeometry height="160" width="210" x="790" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="summary" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=8;verticalAlign=top;fontSize=11;" value="&lt;b&gt;&lt;font style=&quot;font-size: 14px;&quot;&gt;summaries&lt;/font&gt;&lt;/b&gt;&lt;hr&gt;&lt;font style=&quot;font-size: 14px;&quot;&gt;_id (PK)&lt;br&gt;mediaId (FK)&lt;br&gt;transcriptId (FK)&lt;br&gt;text, language&lt;br&gt;userText&lt;br&gt;timestamps&lt;/font&gt;" vertex="1">
+          <mxGeometry height="160" width="240" x="760" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="sub" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=8;verticalAlign=top;fontSize=11;" value="&lt;b&gt;&lt;font style=&quot;font-size: 14px;&quot;&gt;subscriptions&lt;/font&gt;&lt;/b&gt;&lt;hr&gt;&lt;font style=&quot;font-size: 14px;&quot;&gt;_id (PK)&lt;br&gt;userId (FK → User, UQ)&lt;br&gt;plan, status&lt;br&gt;stripeCustomerId&lt;br&gt;stripeSubscriptionId&lt;br&gt;billing period fields&lt;br&gt;timestamps&lt;/font&gt;" vertex="1">
+          <mxGeometry height="160" width="200" x="80" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="r1" edge="1" parent="1" source="user" style="endArrow=block;endFill=1;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.35;" target="media" value="1 : N uploads">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r2" edge="1" parent="1" source="media" style="endArrow=block;endFill=1;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="transcript" value="1 : 1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r3" edge="1" parent="1" source="transcript" style="endArrow=block;endFill=1;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitDx=0;exitDy=0;" target="summary" value="1 : 0..1 summary">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r4" edge="1" parent="1" source="media" style="endArrow=block;endFill=1;html=1;exitX=1;exitY=1;entryX=0;entryY=0.5;exitDx=0;exitDy=0;" target="summary" value="1 : N">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r5" edge="1" parent="1" source="sub" style="endArrow=block;endFill=1;html=1;exitX=0.5;exitY=0;entryX=0.5;entryY=1;" target="user" value="1 : 1 (userId)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="audit" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=left;spacingLeft=8;verticalAlign=top;fontSize=11;" value="&lt;b&gt;&lt;font style=&quot;font-size: 14px;&quot;&gt;subscriptionauditlogs&lt;/font&gt;&lt;/b&gt;&lt;hr&gt;&lt;font style=&quot;font-size: 14px;&quot;&gt;_id (PK)&lt;br&gt;userId (FK → User)&lt;br&gt;action (enum)&lt;br&gt;fromPlan, toPlan&lt;br&gt;stripeEventId, metadata&lt;br&gt;timestamps&lt;/font&gt;" vertex="1">
+          <mxGeometry height="160" width="210" x="400" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="r6" edge="1" parent="1" source="user" style="endArrow=block;endFill=1;html=1;exitX=1;exitY=0.85;entryX=0;entryY=0.5;" target="audit" value="1 : N audit events">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="note" parent="1" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;fillColor=#f0a30a;strokeColor=#BD7000;align=center;spacingLeft=6;fontSize=10;fontColor=#000000;" value="&lt;font style=&quot;font-size: 14px;&quot;&gt;Mongoose models: User, Media, Transcript, Summary, Subscription, SubscriptionAuditLog. Storage is an embedded sub-schema (not its own collection).&lt;/font&gt;" vertex="1">
+          <mxGeometry height="50" width="920" x="80" y="520" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
